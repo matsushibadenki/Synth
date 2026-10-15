@@ -1,0 +1,39 @@
+{
+  "" : {
+    "diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary.dia",
+    "emit-module-dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary-emit-module.dia",
+    "pch" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary.swiftdeps"
+  },
+  "/Users/Shared/Program/Xcode/Synth/Sources/SynthApp/ProphetCore.swift" : {
+    "const-values" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.swiftconstvalues",
+    "dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.d",
+    "diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.dia",
+    "index-unit-output-path" : "/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.o",
+    "llvm-bc" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.bc",
+    "object" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.o",
+    "swift-dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore.swiftdeps",
+    "swiftmodule" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/ProphetCore~partial.swiftmodule"
+  },
+  "/Users/Shared/Program/Xcode/Synth/Sources/SynthApp/SynthApp.swift" : {
+    "const-values" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.swiftconstvalues",
+    "dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.d",
+    "diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.dia",
+    "index-unit-output-path" : "/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.o",
+    "llvm-bc" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.bc",
+    "object" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.o",
+    "swift-dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp.swiftdeps",
+    "swiftmodule" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthApp~partial.swiftmodule"
+  },
+  "/Users/Shared/Program/Xcode/Synth/Sources/SynthApp/SynthEngine.swift" : {
+    "const-values" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.swiftconstvalues",
+    "dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.d",
+    "diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.dia",
+    "index-unit-output-path" : "/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.o",
+    "llvm-bc" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.bc",
+    "object" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.o",
+    "swift-dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine.swiftdeps",
+    "swiftmodule" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Debug/SynthApp-p.build/Objects-normal/arm64/SynthEngine~partial.swiftmodule"
+  }
+}

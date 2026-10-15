@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'AllExcludingTests' in project 'Aggregate'
+➜ Explicit dependency on target 'SynthApp-product' in project 'Synth'
+Target 'SynthApp-product' in project 'Synth' (no dependencies)
