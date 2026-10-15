@@ -1,4 +1,4 @@
-# Synth — Prophet-5 Rev3 inspired
+# Synth — 05 Rev3 inspired
 
 SwiftUI / Metal / AUAudioUnitによる5ボイスの減算合成シンセです。参考画像のシアン／黄緑、金属キャップ付きノブ、黒い筐体を維持し、音色パラメーターをオリジナルRev3に統一しています。
 A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls and the supplied cyan/lime visual reference.
@@ -10,18 +10,18 @@ A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls a
 **46 stored settings = 24 pots + 22 switches.** Master Tune, Volume, both wheels, Tune and A-440 are live controls, excluded from voice programs.
 **46个音色参数 = 24个旋钮参数 + 22个开关参数。** 总调音、主音量、两个控制轮、Tune和A-440不随音色保存。
 
-| Section | Knobs | Switches |
-|---|---:|---:|
-| Poly-Mod | 2 | 3 |
-| LFO | 1 | 3 |
-| Wheel-Mod | 1 | 5 |
-| Oscillator A | 2 | 3 |
-| Oscillator B | 3 | 5 |
-| Mixer | 3 | 0 |
-| Filter + envelope | 7 | 1 |
-| Amplifier envelope | 4 | 0 |
-| Glide / Release / Unison | 1 | 2 |
-| **Program total** | **24** | **22** |
+| Section                  |  Knobs | Switches |
+| ------------------------ | -----: | -------: |
+| Poly-Mod                 |      2 |        3 |
+| LFO                      |      1 |        3 |
+| Wheel-Mod                |      1 |        5 |
+| Oscillator A             |      2 |        3 |
+| Oscillator B             |      3 |        5 |
+| Mixer                    |      3 |        0 |
+| Filter + envelope        |      7 |        1 |
+| Amplifier envelope       |      4 |        0 |
+| Glide / Release / Unison |      1 |        2 |
+| **Program total**        | **24** |   **22** |
 
 基準資料は[Sequential Circuits CM1000D（1982年2月）](https://synthfool.com/docs/SequentialCircuits/Prophet_Series/Sequential%20Circuits%20Prophet%205%20Owners%20Manual.pdf)です。第2章の操作説明と6-5〜6-6ページの24バイト保存形式を照合しています。メモリー構成はRev3.3の3ファイル×5バンク×8音色＝120枠です。初期Rev3の40枠とは区別します。工場音色の複製は含みません。
 The reference is the original CM1000D manual, section 2 and the 24-byte program table on pages 6-5–6-6. Memory follows Rev3.3: 3 files × 5 banks × 8 programs = 120 slots; earlier Rev3 units had 40. Factory patches are not bundled.
