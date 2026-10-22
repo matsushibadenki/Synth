@@ -20,6 +20,8 @@ final class SynthEngine: ObservableObject {
     }
 
     let sharedParams = SharedSynthParameters()
+    let sharedEffects = SharedEffects()
+    lazy var effects = EffectsController(shared:sharedEffects)
 
     private let engine = AVAudioEngine()
     private var node: AVAudioUnit?
@@ -38,12 +40,14 @@ final class SynthEngine: ObservableObject {
 
     init() {
         ProphetLikeAudioUnit.sharedParameters = sharedParams
+        ProphetLikeAudioUnit.sharedEffects = sharedEffects
         AUAudioUnit.registerSubclass(
             ProphetLikeAudioUnit.self,
             as: componentDescription,
             name: "Local ProphetLike Generator",
             version: UInt32.max
         )
+        _ = effects
     }
 
     func start() {
@@ -83,6 +87,7 @@ final class SynthEngine: ObservableObject {
             self.node = nil
         }
         isRunning = false
+        sharedEffects.resetLoop()
     }
 
     deinit {

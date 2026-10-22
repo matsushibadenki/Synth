@@ -14,8 +14,9 @@ struct SynthApp: App {
 struct ContentView: View {
     @ObservedObject var engine: SynthEngine
     @State private var parameters = SynthParameters()
+    @State private var selectedTab: RackTab = .synth
     @State private var showEditor = false
-    @State private var gpuUnavailable = false
+    @State private var showInfo = false
     @State private var selectedFile = 1
     @State private var bank = 1
     @State private var program = 1
@@ -42,74 +43,106 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            Color(red:0.018,green:0.024,blue:0.028).ignoresSafeArea()
-            ScrollView {
-                VStack(spacing:14) {
-                    toolbar
-                    InstrumentPanel(controls:controls,switches:switches,enabled:engine.isRunning,changed:apply,
-                        noteOn:{ engine.playNote($0) },noteOff:{ engine.releaseNote($0) },
-                        onUnavailable:{ gpuUnavailable=true; showEditor=true })
-                    memory
-                    if gpuUnavailable { fallbackKeyboard }
-                    DisclosureGroup(isExpanded:$showEditor) {
-                        nativeEditor
-                    } label: {
-                        Label(instrumentText("Parameter editor","パラメーター編集","参数编辑"),systemImage:"slider.horizontal.3")
-                    }.font(.caption).tint(.white.opacity(0.7))
-                }.padding(.horizontal,16).padding(.vertical,16)
+            InstrumentFinish.backdrop.ignoresSafeArea()
+            GeometryReader { viewport in
+            VStack(spacing:8) {
+                if viewport.size.height < 520 {
+                    ScrollView { sharedPanel(width:viewport.size.width-32) }.frame(height:max(112,(viewport.size.height-24)*0.55))
+                } else { sharedPanel(width:viewport.size.width-32) }
+                VStack(spacing:0) {
+                    RackTabStrip(selection:$selectedTab)
+                    ScrollView {
+                        VStack(spacing:0) {
+                        if selectedTab == .synth {
+                            InstrumentPanel(controls:controls,switches:switches,enabled:engine.isRunning,changed:apply,
+                                            onUnavailable:{showEditor=true})
+                            DisclosureGroup(isExpanded:$showEditor) {
+                                nativeEditor
+                            } label: {
+                                Label(instrumentText("Parameter editor","パラメーター編集","参数编辑"),systemImage:"slider.horizontal.3")
+                            }.font(InstrumentFinish.legend()).tint(InstrumentFinish.muted)
+                                .padding(.horizontal,16).padding(.vertical,10)
+                        } else if selectedTab == .patch {
+                            EffectsPatchView(rack:engine.effects,editEffect:openEffect)
+                        } else {
+                            EffectsWorkspace(rack:engine.effects,tab:selectedTab,openPatch:{selectedTab = .patch})
+                        }
+                        }
+                    }
+                }.background(CabinetFinish()).overlay(CabinetRails())
+            }.padding(.horizontal,16).padding(.vertical,12)
             }
         }
         .preferredColorScheme(.dark)
         .onAppear { loadProgram(); apply(); engine.start() }
     }
 
-    private var toolbar: some View {
-        HStack(spacing:12) {
-            Text("5 VOICES / REV 3").font(.system(size:11,weight:.medium,design:.monospaced)).foregroundStyle(.secondary)
-            Spacer(minLength:4)
-            Button { parameters.autoTuneTrigger &+= 1; apply() } label: { Image(systemName:"tuningfork") }
-                .help(instrumentText("Tune oscillators","オシレーターをチューニング","振荡器调音"))
-                .accessibilityLabel(instrumentText("Tune","チューニング","调音"))
-            Button { parameters.referenceA440.toggle(); apply() } label: {
-                Text("A-440").font(.system(size:11,weight:.semibold,design:.monospaced))
-                    .foregroundStyle(parameters.referenceA440 ? .orange:.primary)
-            }.help(instrumentText("440 Hz reference tone","440 Hz 基準音","440 Hz 参考音"))
-                .accessibilityValue(parameters.referenceA440 ? "On":"Off")
-            Button(action:togglePower) { Image(systemName:"power").foregroundStyle(engine.isRunning ? .mint:.secondary) }
-                .help(instrumentText("Power","電源","电源"))
-                .accessibilityLabel(instrumentText("Power","電源","电源"))
-        }.buttonStyle(.borderless).controlSize(.regular)
+    private func sharedPanel(width: CGFloat) -> some View {
+        SharedPerformancePanel(header:toolbar(panelWidth:width),file:$selectedFile,bank:$bank,program:$program,status:memoryStatus,
+                    recall:loadProgram,record:saveProgram,controls:controls,switches:switches.map { $0.value.wrappedValue },
+                    enabled:engine.isRunning,changed:apply,noteOn:{engine.playNote($0)},noteOff:{engine.releaseNote($0)})
     }
 
-    private var memory: some View {
-        VStack(alignment:.leading,spacing:8) {
-            HStack {
-                Text("PROGRAMMER").font(.system(size:11,weight:.semibold,design:.monospaced))
-                Spacer()
-                Text("\(selectedFile) · \(bank)–\(program)").monospacedDigit().foregroundStyle(.orange)
-                Button { loadProgram() } label: { Image(systemName:"arrow.down.doc") }
-                    .help(instrumentText("Recall program","音色を読み込む","载入音色"))
-                    .accessibilityLabel(instrumentText("Recall program","音色を読み込む","载入音色"))
-                Button { saveProgram() } label: { Image(systemName:"record.circle") }
-                    .help(instrumentText("Record program","音色を保存","保存音色"))
-                    .accessibilityLabel(instrumentText("Record program","音色を保存","保存音色"))
+    private func openEffect(_ kind: EffectKind) {
+        switch kind {
+        case .synth: selectedTab = .synth
+        case .dimension: selectedTab = .dimension
+        case .sky, .time: selectedTab = .ambience
+        case .pedal: selectedTab = .pedal
+        case .ring: selectedTab = .ring
+        case .studio: selectedTab = .studio
+        default: break
+        }
+    }
+
+    private func toolbar(panelWidth: CGFloat) -> some View {
+        ViewThatFits(in:.horizontal) {
+            HStack(alignment:.center,spacing:8) { nameplate; Spacer(minLength:8); masterVolume(panelWidth:panelWidth,horizontal:true); utilityControls }
+            HStack(spacing:8) {
+                VStack(alignment:.leading,spacing:4) { nameplate; utilityControls }
+                Spacer(minLength:0)
+                masterVolume(panelWidth:panelWidth,horizontal:false)
             }
-            HStack {
-                Picker("FILE",selection:$selectedFile) { ForEach(1...3,id:\.self) { Text("\($0)").tag($0) } }
-                Picker("BANK",selection:$bank) { ForEach(1...5,id:\.self) { Text("\($0)").tag($0) } }
-            }.pickerStyle(.menu)
-            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:4),count:8),spacing:4) {
-                ForEach(1...8,id:\.self) { number in
-                    Button { program=number; loadProgram() } label: {
-                        Text("\(number)").font(.system(size:12,weight:.semibold,design:.monospaced))
-                            .frame(maxWidth:.infinity,minHeight:32).padding(.horizontal,2)
-                            .foregroundStyle(program == number ? .orange:.primary)
-                            .background(.white.opacity(0.07),in:RoundedRectangle(cornerRadius:5))
-                    }.buttonStyle(.plain)
+        }
+        .padding(.horizontal,18).padding(.vertical,6)
+        .overlay(alignment:.bottom) { Rectangle().fill(InstrumentFinish.metalEdge).frame(height:1).padding(.horizontal,12) }
+    }
+    private func masterVolume(panelWidth: CGFloat,horizontal: Bool) -> some View {
+        let layout=PanelLayout(columns:PanelLayout.columns(for:panelWidth),showsKeyboard:false)
+        return MasterVolumeControl(controls:controls,switches:switches.map { $0.value.wrappedValue },
+                                   scale:panelWidth/CGFloat(layout.width+0.4),horizontal:horizontal,changed:apply)
+    }
+    private var nameplate: some View {
+        HStack(spacing:10) {
+            PanelScrew()
+            VStack(alignment:.leading,spacing:1) {
+                Text("SYNTH / 05").font(InstrumentFinish.wordmark).tracking(1).foregroundStyle(InstrumentFinish.ink)
+                Text("REV 3 · 5 VOICES / 2 VCO").font(InstrumentFinish.legend(8)).tracking(0.6).foregroundStyle(InstrumentFinish.muted)
+            }.fixedSize()
+        }
+    }
+    private var utilityControls: some View {
+        HStack(spacing:6) {
+            Button { showInfo.toggle() } label: { Image(systemName:"info.circle").frame(width:32,height:32) }
+                .help(instrumentText("Controls","操作方法","操作说明"))
+                .accessibilityLabel(instrumentText("Controls","操作方法","操作说明"))
+                .popover(isPresented:$showInfo) {
+                    Text(instrumentText("Drag knobs and wheels vertically. Double-click to restore their initial setting. Hold keys to play.","ノブとホイールは上下にドラッグ。ダブルタップで初期値に戻ります。鍵盤を押して演奏します。","上下拖动旋钮和控制轮，双击恢复初始值，按住琴键演奏。"))
+                        .padding(20).frame(idealWidth:280)
                 }
-            }
-            if !memoryStatus.isEmpty { Text(memoryStatus).font(.caption).foregroundStyle(.secondary) }
-        }.padding(12).background(.white.opacity(0.035),in:RoundedRectangle(cornerRadius:8))
+            Button { parameters.autoTuneTrigger &+= 1; apply() } label: { Image(systemName:"tuningfork").frame(width:32,height:32) }
+                .help(instrumentText("Tune oscillators","オシレーターをチューニング","振荡器调音"))
+                .accessibilityLabel(instrumentText("Tune","チューニング","调音"))
+            Button { parameters.referenceA440.toggle(); apply() } label: { Text("A-440").frame(width:46,height:32) }
+                .buttonStyle(HardwareButtonStyle(selected:parameters.referenceA440))
+                .help(instrumentText("440 Hz reference tone","440 Hz 基準音","440 Hz 参考音"))
+                .accessibilityValue(parameters.referenceA440 ? instrumentText("On","オン","开"):instrumentText("Off","オフ","关"))
+            Button(action:togglePower) { Image(systemName:"power").frame(width:32,height:32) }
+                .buttonStyle(HardwareButtonStyle(selected:engine.isRunning))
+                .help(instrumentText("Power","電源","电源"))
+                .accessibilityLabel(instrumentText("Power","電源","电源"))
+                .accessibilityValue(engine.isRunning ? instrumentText("On","オン","开"):instrumentText("Off","オフ","关"))
+        }.buttonStyle(HardwareButtonStyle())
     }
 
     private var nativeEditor: some View {
@@ -117,7 +150,7 @@ struct ContentView: View {
             ForEach(Rev3.sections.indices,id:\.self) { index in
                 VStack(alignment:.leading,spacing:8) {
                     Text(Rev3.sections[index].title).font(.system(.caption,design:.monospaced)).foregroundStyle(.mint)
-                    ForEach(Rev3.sections[index].knobs,id:\.self) { knob in editorControl(knob) }
+                    ForEach(Rev3.sections[index].knobs.filter { $0 != 25 },id:\.self) { knob in editorControl(knob) }
                     ForEach(Rev3.sections[index].switches,id:\.self) { index in
                         Toggle(switches[index].title,isOn:Binding(get:{switches[index].value.wrappedValue},set:{switches[index].value.wrappedValue=$0; apply()}))
                     }
@@ -137,15 +170,6 @@ struct ContentView: View {
             }
             Slider(value:Binding(get:{control.normalized},set:{control.setNormalized($0); apply()}),in:0...1)
                 .accessibilityLabel(control.title).accessibilityValue(control.displayValue)
-        }
-    }
-    private var fallbackKeyboard: some View {
-        HStack(spacing:4) {
-            ForEach([60,62,64,65,67,69,71,72],id:\.self) { note in
-                Text(["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"][note%12])
-                    .font(.caption).frame(width:30,height:70).background(.white.opacity(0.15),in:RoundedRectangle(cornerRadius:4))
-                    .gesture(DragGesture(minimumDistance:0).onChanged { _ in engine.playNote(note) }.onEnded { _ in engine.releaseNote(note) })
-            }
         }
     }
     private func apply() { engine.sharedParams.set { $0=parameters } }

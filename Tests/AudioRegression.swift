@@ -1,4 +1,4 @@
-// Run with Rev3Parameters.swift and ProphetCore.swift concatenated before this file (see README).
+// Run with Rev3Parameters.swift, EffectsGraph.swift, EffectsDSP.swift and ProphetCore.swift concatenated before this file (see README).
 // Direct AU rendering exercises DSP without requiring an audio output device.
 func checkEnvelope() {
     for sr: Float in [44100, 48000, 96000] {

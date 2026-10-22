@@ -1,0 +1,11 @@
+{
+  "/Users/Shared/Program/Xcode/Synth/Sources/SynthApp/EffectsController.swift" : {
+    "abi-baseline-json" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp.abi.json",
+    "const-values" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary.swiftconstvalues",
+    "dependencies" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary.d",
+    "diagnostics" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp-primary.dia",
+    "swiftdoc" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp.swiftdoc",
+    "swiftmodule" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp.swiftmodule",
+    "swiftsourceinfo" : "/Users/Shared/Program/Xcode/Synth/.build/out/Intermediates.noindex/Synth.build/Release/SynthApp-p.build/Objects-normal/arm64/SynthApp.swiftsourceinfo"
+  }
+}

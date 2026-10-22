@@ -2,38 +2,47 @@
 import MetalKit
 import simd
 
-struct PanelLayout {
+struct PanelLayout: Equatable {
     let columns: Int
+    var showsKeyboard = true
+    var keyboardOnly = false
+    var masterVolumeOnly = false
+    var omitsMasterVolume = false
     static func columns(for width: CGFloat) -> Int { width >= 900 ? 3 : (width >= 600 ? 2 : 1) }
     var rows: Int { (Rev3.sections.count+columns-1)/columns }
-    var width: Float { Float(columns)*6.6+0.3 }
+    var width: Float { masterVolumeOnly ? 0.88:Float(columns)*6.6+0.3 }
+    // Keep the horizontal projection unchanged: at a given window width the
+    // knobs, switches and their hit targets retain their original screen size.
     func rowHeight(_ row: Int) -> Float {
         let count=Rev3.sections[(row*columns)..<min((row+1)*columns,Rev3.sections.count)].map { $0.switches.count }.max() ?? 0
-        return count > 3 ? 3.75 : (count > 0 ? 3.05 : 2.65)
+        return count > 0 ? 3.2 : 2.42
     }
-    var height: Float { (0..<rows).reduce(0) { $0+rowHeight($1) }+(columns == 3 ? 0.3:2.2) }
+    var height: Float { masterVolumeOnly ? 0.96:keyboardOnly ? 2.2 : (0..<rows).reduce(0) { $0+rowHeight($1) }+(showsKeyboard && columns != 3 ? 2.2:0.3) }
     func bankTop(_ bank: Int) -> Float { height/2-0.15-(0..<(bank/columns)).reduce(0) { $0+rowHeight($1) } }
     var scale: Float { height*0.5+0.16 }
     var aspect: Float { (width*0.5+0.2)/scale }
     func bankCenter(_ bank: Int) -> SIMD3<Float> {
-        SIMD3(-width/2+3.45+Float(bank%columns)*6.6,bankTop(bank)-rowHeight(bank/columns)/2,0.05)
+        SIMD3(!showsKeyboard && columns == 3 && bank == 9 ? 0:-width/2+3.45+Float(bank%columns)*6.6,bankTop(bank)-rowHeight(bank/columns)/2,0.05)
     }
-    func title(_ section: Int) -> SIMD3<Float> { SIMD3(bankCenter(section).x,bankTop(section)-0.35,0.09) }
+    func title(_ section: Int) -> SIMD3<Float> { SIMD3(bankCenter(section).x,bankTop(section)-0.25,0.09) }
     func knob(_ index: Int) -> SIMD3<Float> {
+        if masterVolumeOnly { return SIMD3(0,0,0.3) }
         let section=Rev3.sections.firstIndex { $0.knobs.contains(index) }!
-        let ids=Rev3.sections[section].knobs
+        let ids=Rev3.sections[section].knobs.filter { !omitsMasterVolume || index == 25 || $0 != 25 }
         let slot=ids.firstIndex(of:index)!
-        return SIMD3(bankCenter(section).x+(Float(slot)-Float(ids.count-1)/2)*1.5,bankTop(section)-1.46,0.3)
+        return SIMD3(bankCenter(section).x+(Float(slot)-Float(ids.count-1)/2)*1.34,bankTop(section)-1.47,0.3)
     }
+    func knobLabel(_ index: Int) -> SIMD3<Float> { knob(index)+SIMD3(0,0.77,-0.2) }
+    func knobValue(_ index: Int) -> SIMD3<Float> { knob(index)+SIMD3(0,-0.62,-0.2) }
+    func toggleLabel(_ index: Int) -> SIMD3<Float> { toggle(index)+SIMD3(0,0.29,-0.08) }
     func toggle(_ index: Int) -> SIMD3<Float> {
         let section=Rev3.sections.firstIndex { $0.switches.contains(index) }!
         let ids=Rev3.sections[section].switches
         let slot=ids.firstIndex(of:index)!
-        let count=min(3,ids.count-slot/3*3)
-        return SIMD3(bankCenter(section).x+(Float(slot%3)-Float(count-1)/2)*1.7,bankTop(section)-2.55-Float(slot/3)*0.7,0.16)
+        return SIMD3(bankCenter(section).x+(Float(slot)-Float(ids.count-1)/2)*1.16,bankTop(section)-2.8,0.16)
     }
     func wheel(_ index: Int, value: Float=0.5) -> SIMD3<Float> {
-        SIMD3(keyboardLeft+0.5+Float(index)*1.1,keyY+(value-0.5)*0.9,0.17)
+        SIMD3(keyboardLeft+0.5+Float(index)*(keyboardOnly ? 1.16:1.1),keyY+(value-0.5)*0.9,0.17)
     }
     func point(_ p: SIMD3<Float>) -> CGPoint {
         // Orthographic front view with a slight elevation keeps every control aligned.
@@ -41,21 +50,23 @@ struct PanelLayout {
     }
     var whiteNotes: [Int] { [60,62,64,65,67,69,71,72] }
     var blackNotes: [(note: Int, slot: Int)] { [(61,0),(63,1),(66,3),(68,4),(70,5)] }
-    var keyboardLeft: Float { -width/2+(columns == 3 ? 6.85:0.15) }
-    var keyY: Float { columns == 3 ? bankCenter(9).y-0.2 : -height/2+0.85 }
-    var keyboardWidth: Float { width-(columns == 3 ? 9.35:2.65) }
+    var keyboardLeft: Float { -width/2+(columns == 3 && !keyboardOnly ? 6.85:0.15) }
+    var keyY: Float { columns == 3 && !keyboardOnly ? bankCenter(9).y-0.2 : -height/2+0.85 }
+    var keyboardWidth: Float { width-(columns == 3 && !keyboardOnly ? 9.35:2.65) }
     var keyWidth: Float { keyboardWidth/8 }
     func keyX(_ index: Int) -> Float { keyboardLeft+2.25+(Float(index)+0.5)*keyWidth }
 }
 
 private enum PanelMaterial {
-    static let chassis = SIMD4<Float>(0.012,0.016,0.019,0)
+    static let chassis = SIMD4<Float>(0.026,0.032,0.036,4)
     static let cyan = SIMD4<Float>(0.045,0.47,0.53,0)
     static let lime = SIMD4<Float>(0.53,0.56,0.055,0)
     static let ink = SIMD4<Float>(0.008,0.016,0.017,0)
     static let silver = SIMD4<Float>(0.63,0.66,0.65,1)
     static let rubber = SIMD4<Float>(0.015,0.019,0.022,2)
     static let ivory = SIMD4<Float>(0.78,0.8,0.72,0)
+    static let felt = SIMD4<Float>(0.24,0.025,0.018,0)
+    static let keybed = SIMD4<Float>(0.035,0.041,0.043,4)
     static let light = SIMD4<Float>(0.8,0.015,0.008,3)
 }
 
@@ -155,15 +166,16 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
     // 26 physical knobs (24 stored + tune/volume), two wheels, 22 stored switches.
     func update(layout: PanelLayout, values: [Double], activeNotes: Set<Int>, switches: [Bool]) {
         guard values.count == 28, switches.count == 22 else { return }
-        guard vertexBuffer == nil || self.layout.columns != layout.columns || lastValues != values || lastNotes != activeNotes || lastSwitches != switches else { return }
+        guard vertexBuffer == nil || self.layout != layout || lastValues != values || lastNotes != activeNotes || lastSwitches != switches else { return }
         self.layout=layout; lastValues=values; lastNotes=activeNotes; lastSwitches=switches
         let v=values.map { Float($0.isFinite ? min(1,max(0,$0)) : 0) }
         var mesh=PanelMesh()
-        mesh.plate([0,0,-0.18],size:[layout.width,layout.height],radius:0.12,depth:0.18,color:PanelMaterial.chassis)
-        for bank in Rev3.sections.indices {
+        mesh.plate([0,0,-0.18],size:[layout.width+(layout.masterVolumeOnly ? 0.4:0),layout.height+(layout.masterVolumeOnly ? 0.32:0)],radius:0.12,depth:0.18,color:PanelMaterial.chassis)
+        for bank in Rev3.sections.indices where !layout.keyboardOnly && !layout.masterVolumeOnly {
             let c=layout.bankCenter(bank)
-            mesh.plate([c.x,c.y,0.012],size:[6.48,layout.rowHeight(bank/layout.columns)-0.14],radius:0.16,depth:0.055,color:bank%3 == 1 ? PanelMaterial.lime : PanelMaterial.cyan)
-            for dx: Float in [-3.1,3.1] {
+            let bankWidth: Float = !layout.showsKeyboard && layout.columns == 3 && bank == 9 ? layout.width-0.38:6.52
+            mesh.plate([c.x,c.y,0.012],size:[bankWidth,layout.rowHeight(bank/layout.columns)-0.08],radius:0.16,depth:0.055,color:bank%3 == 1 ? PanelMaterial.lime : PanelMaterial.cyan)
+            for dx in [-bankWidth/2+0.16,bankWidth/2-0.16] {
                 for dy in [-layout.rowHeight(bank/layout.columns)/2+0.2,layout.rowHeight(bank/layout.columns)/2-0.2] {
                     let screw=SIMD3<Float>(c.x+dx,c.y+dy,0.08)
                     mesh.lathe(screw,profile:[(0.07,0),(0.065,0.045),(0,0.055)],color:PanelMaterial.rubber,segments:24)
@@ -171,7 +183,7 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
                 }
             }
         }
-        for i in Rev3.knobs.indices {
+        for i in Rev3.knobs.indices where !layout.keyboardOnly && (layout.masterVolumeOnly ? i == 25:(!layout.omitsMasterVolume || i != 25)) {
             let c=layout.knob(i)
             mesh.lathe([c.x,c.y,0.07],profile:[(0.44,0),(0.44,0.03),(0.4,0.045),(0,0.045)],color:PanelMaterial.ink)
             mesh.lathe([c.x,c.y,0.09],profile:[(0.39,0),(0.36,0.18),(0.31,0.24),(0,0.24)],color:PanelMaterial.rubber)
@@ -179,18 +191,19 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
             for tick in 0...10 {
                 let a = -Float.pi*0.75-Float(tick)/10 * .pi*1.5
                 let n=SIMD3<Float>(cos(a),sin(a),0)
-                mesh.line([c.x,c.y,0.075]+n*0.47,[c.x,c.y,0.075]+n*(tick%5==0 ? 0.59:0.54),width:0.012,color:PanelMaterial.ink)
+                mesh.line([c.x,c.y,0.075]+n*0.47,[c.x,c.y,0.075]+n*(tick%5==0 ? 0.59:0.54),width:0.012,color:layout.masterVolumeOnly ? PanelMaterial.silver:PanelMaterial.ink)
             }
             let a = -Float.pi*0.75-v[i] * .pi*1.5
             let n=SIMD3<Float>(cos(a),sin(a),0)
             mesh.line([c.x,c.y,0.367]+n*0.26,[c.x,c.y,0.367]+n*0.36,width:0.032,color:PanelMaterial.ivory)
         }
-        for index in Rev3.switches.indices {
+        for index in Rev3.switches.indices where !layout.keyboardOnly && !layout.masterVolumeOnly {
             let c=layout.toggle(index)
             mesh.plate([c.x,c.y,0.075],size:[0.58,0.24],radius:0.08,depth:0.015,color:PanelMaterial.ink)
             mesh.plate([c.x,c.y,0.09],size:[0.44,0.18],radius:0.045,depth:switches[index] ? 0.025:0.07,color:PanelMaterial.rubber)
             mesh.lathe([c.x+0.38,c.y,0.08],profile:[(0.055,0),(0.045,0.025),(0,0.03)],color:switches[index] ? PanelMaterial.light : PanelMaterial.ink,segments:24)
         }
+        if layout.showsKeyboard && !layout.masterVolumeOnly {
         for index in 0..<2 {
             let w=layout.wheel(index)
             mesh.plate([w.x,w.y,0.075],size:[0.16,1.25],radius:0.065,depth:0.01,color:PanelMaterial.silver)
@@ -199,6 +212,10 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
             mesh.plate([handle.x,handle.y,0.13],size:[0.58,0.25],radius:0.08,depth:0.09,color:PanelMaterial.rubber)
             mesh.line([handle.x-0.2,handle.y,0.225],[handle.x+0.2,handle.y,0.225],width:0.015,color:PanelMaterial.silver)
         }
+        // Recessed keybed and felt lip belong to the enclosure, not the keys.
+        let keybedCenter=(layout.keyX(0)+layout.keyX(7))/2
+        mesh.plate([keybedCenter,layout.keyY,-0.01],size:[layout.keyboardWidth+0.1,1.25],radius:0.045,depth:0.04,color:PanelMaterial.keybed)
+        mesh.plate([keybedCenter,layout.keyY+0.52,0.065],size:[layout.keyboardWidth,0.075],radius:0.015,depth:0.015,color:PanelMaterial.felt)
         for (i,note) in layout.whiteNotes.enumerated() {
             let z: Float=activeNotes.contains(note) ? 0.025 : 0.07
             mesh.plate([layout.keyX(i),layout.keyY,z],size:[layout.keyWidth-0.025,1.0],radius:0.045,depth:0.09,color:activeNotes.contains(note) ? PanelMaterial.cyan : PanelMaterial.ivory)
@@ -206,6 +223,7 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
         for item in layout.blackNotes {
             let z: Float=activeNotes.contains(item.note) ? 0.14 : 0.2
             mesh.plate([layout.keyX(item.slot)+layout.keyWidth/2,layout.keyY+0.19,z],size:[layout.keyWidth*0.56,0.63],radius:0.04,depth:0.1,color:PanelMaterial.rubber)
+        }
         }
         vertexCount=mesh.vertices.count
         vertexBuffer=mesh.vertices.withUnsafeBytes { device.makeBuffer(bytes:$0.baseAddress!,length:$0.count,options:.storageModeShared) }
@@ -221,7 +239,7 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(buffer,offset:0,index:0)
         var projection=SIMD4<Float>(layout.scale*layout.aspect,layout.scale,layout.height,0)
         encoder.setVertexBytes(&projection,length:MemoryLayout<SIMD4<Float>>.stride,index:1)
-        let centers=(0..<26).map { SIMD4<Float>(layout.knob($0),0) }
+        let centers=(0..<26).map { layout.keyboardOnly || (layout.masterVolumeOnly && $0 != 25) || (layout.omitsMasterVolume && $0 == 25) ? SIMD4<Float>(1000,1000,0,0):SIMD4<Float>(layout.knob($0),0) }
         centers.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!,length:$0.count,index:0) }
         encoder.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:vertexCount)
     }
@@ -298,6 +316,11 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
             spec+=pow(max(dot(n,halfVector),0.0),120.0)*0.22;
         }
         if(in.color.a>1.5 && in.color.a<2.5 && n.z<0.9) base*=0.8+0.2*cos(angle*40);
+        if(in.color.a>3.5) {
+            float grain=sin(in.world.y*90.0)*0.0015*(1.0-smoothstep(1.5,3.0,fwidth(in.world.y*90.0)));
+            base+=grain;
+            spec*=0.35;
+        }
         float shade=1;
         if(in.world.z<0.085 && n.z>0.8) {
             for(int i=0;i<26;i++) {
@@ -306,7 +329,7 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
             }
         }
         float3 color=(base*(0.28+diffuse*0.7)+spec)*shade;
-        if(in.color.a>2.5) color=base+float3(0.12,0.015,0.005);
+        if(in.color.a>2.5 && in.color.a<3.5) color=base+float3(0.12,0.015,0.005);
         return float4(pow(max(color,float3(0)),float3(1.0/2.2)),1);
     }
     """
