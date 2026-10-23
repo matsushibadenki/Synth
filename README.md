@@ -29,11 +29,19 @@ The reference is the original CM1000D manual, section 2 and the 24-byte program 
 
 ## 実装 / Implementation / 实现
 
+- 🟢 [Done] FXなしの単音で目立つ速いうなりを軽減。初期OSC B FINEを0セントにし、独立した音程揺れを小さく・ゆっくりに調整しました。遅い温度変動と自由走行する発振器は維持します。保存済み音色のFINEは変更しないため、既存音色ではOSC B FINEを0にして確認してください。意図的なデチューンによるうなりは残ります。
+  Reduced rapid dry-note beating: neutral initial OSC B FINE, smaller/slower independent pitch wander, retained slow thermal motion and free-running phases. Saved patches retain their FINE value; set OSC B FINE to 0 when checking an existing patch. Intentional detuning still beats naturally.
+  减轻干声单音的快速拍频：初始OSC B FINE设为0，减小并放慢独立音高漂移，保留缓慢温度变化与自由运行相位。已存音色的FINE不变，检查旧音色时请将OSC B FINE设为0；有意失谐仍会产生自然拍频。
+
+- 🟢 [Done] 演奏中のプツプツ音への対策：通常のXcode Run／DebugビルドでもSwift DSPを最適化し、音声コールバックのパラメーター取得とノート受信を非待機化。ノートキューは256イベントの固定容量、押鍵状態は固定ビット列で管理します。ロック競合中も直前の音色で演奏を継続し、保留した離鍵は次に受信できたブロックで処理します。揺れ・共振・プリセットの値は変更しません。
+  Crackle fix: optimize Swift DSP in normal Xcode Run/Debug builds and remove waiting for parameter/note locks from render. A fixed 256-event queue and MIDI-key bitset replace growing collections. Contention keeps the last valid patch playing and defers queued note-offs. Timbre and saved programs are unchanged.
+  修复演奏爆音：普通Xcode Run／Debug构建也优化Swift DSP，音频回调不再等待参数／音符锁。采用固定256事件队列和按键位集；锁冲突时继续使用上一份有效音色，稍后处理保留的松键事件，不改变音色与预设。
+
 - 🟢 [Done] 音源のアナログ挙動を改良。10発振器を離鍵中も動かし、独立した緩やかな音程変動、5ボイスのフィルター／ADSR／VCA差、Tune補正、CVベースのGlideを実装。44.1／48kHzでは音源全体を4倍、88.2／96kHzでは2倍で処理し、FIRで折り返しを抑制します。フィルターの非線形帰還、自己発振、パルスのDC除去と4msの主要コントロール平滑化も追加。操作項目は同じ46項目です。
   Free-running VCOs, independent slow pitch drift, per-card filter/envelope/VCA tolerances, tuning correction and pitch-CV glide. The complete voice path runs at 4× for 44.1/48 kHz and 2× for 88.2/96 kHz, followed by FIR decimation. Nonlinear filter feedback, self-oscillation, DC removal and 4 ms smoothing of main timbre controls are included; the 46-setting format is unchanged.
   新增自由运行振荡器、独立缓慢音高漂移、声部间滤波器／包络／VCA差异、调音补偿与音高CV滑音。44.1／48kHz采用4倍、88.2／96kHz采用2倍全音源过采样并通过FIR降采样，改善非线性反馈、自激振荡、直流消除及主要音色控制平滑处理；仍为46个音色参数。
 
-  [ドライ試聴 / Dry demo / 干声试听](Previews/rev3-analog-demo.wav)：ブラス → ユニゾンベース → Syncリード → Poly-Modベル。FXなし、16.27秒。 / No FX, 16.27 seconds. / 无效果，16.27秒。
+  [ドライ試聴 / Dry demo / 干声试听](Previews/rev3-analog-demo.wav)：ブラス → ユニゾンベース → Syncリード → Poly-Modベル。FXなし、16.27秒。揺れ軽減前の参考録音です。 / No FX, 16.27 seconds; recorded before the beating adjustment. / 无效果，16.27秒；拍频调整前的参考录音。
 
 - 🟢 [Done] マスター音量を共通タイトル帯へ移設し、全エフェクト画面から操作可能に。元と同じMetalノブ形状・描画倍率・操作感度を維持し、シンセ操作面の重複ノブを削除。狭い幅ではタイトル／操作ボタンの右側へ縦配置し、288pt幅の共通パネル高は327ptを維持。
   Master volume now lives in the shared header across all FX tabs. Its Metal mesh, projected size and drag sensitivity are unchanged; the duplicate synth control is removed. Narrow layouts place it beside the title/utilities.
@@ -92,9 +100,10 @@ swiftc -module-cache-path /tmp/synth-clang-cache /tmp/synth-metal-check.swift -o
 /tmp/synth-metal-check
 ```
 
-実時間の試奏には最適化ビルドを使用してください（XcodeではRunのBuild ConfigurationをReleaseへ設定）。Debugの無最適化ビルドは上記CPU測定の対象外です。
-Use an optimized build for live playing; in Xcode set the Run build configuration to Release. Unoptimized Debug performance is not represented by the measurements above.
-实时演奏请使用优化构建，Xcode的Run构建配置设为Release；上述CPU测量不代表未优化的Debug性能。
+通常のDebugビルドにも`-O`を適用しています。Xcodeから通常どおり停止→実行することで修正が反映されます。デバッグシンボルは維持しますが、最適化によって変数の参照やステップ実行が制限される場合があります。Releaseビルドも利用できます。
+Normal Debug builds now use `-O`; stop and run again in Xcode to load the fix. Debug symbols remain, but optimized variables/stepping may be limited. Release remains available.
+普通Debug构建现已使用`-O`，在Xcode停止后重新运行即可加载修复。保留调试符号，但优化可能限制变量查看与单步调试，仍可使用Release构建。
+
 ```sh
 CLANG_MODULE_CACHE_PATH=/tmp/synth-clang-cache SWIFTPM_MODULECACHE_OVERRIDE=/tmp/synth-swift-cache swift build -c release --disable-sandbox
 .build/release/SynthApp
@@ -105,6 +114,13 @@ CLANG_MODULE_CACHE_PATH=/tmp/synth-clang-cache SWIFTPM_MODULECACHE_OVERRIDE=/tmp
 cat Sources/SynthApp/Rev3Parameters.swift Sources/SynthApp/EffectsGraph.swift Sources/SynthApp/EffectsDSP.swift Sources/SynthApp/ProphetCore.swift Tests/Rev3Regression.swift Tests/AnalogDemo.swift > /tmp/synth-analog-demo.swift
 swiftc -O -module-cache-path /tmp/synth-clang-cache /tmp/synth-analog-demo.swift -o /tmp/synth-analog-demo
 /tmp/synth-analog-demo /tmp/rev3-analog-demo.wav
+```
+
+音切れ対策の回帰検証 / Realtime regression / 实时回归验证：
+```sh
+cat Sources/SynthApp/Rev3Parameters.swift Sources/SynthApp/EffectsGraph.swift Sources/SynthApp/EffectsDSP.swift Sources/SynthApp/ProphetCore.swift Tests/Rev3Regression.swift Tests/RealtimeRegression.swift > /tmp/synth-realtime-regression.swift
+swiftc -Onone -g -O -module-cache-path /tmp/synth-clang-cache /tmp/synth-realtime-regression.swift -o /tmp/synth-realtime-regression
+/tmp/synth-realtime-regression
 ```
 
 音源テストは44.1/48/96kHzの安定性、ADSR、波形併用、最低音優先、Release、変調経路、A-440、保存項目数と非保存コントロールの維持を検査します。GPUテストは288／343／382／736／1100pxで描画し、状態変化と領域内配置を確認します。GPUチェックにはMetalデバイスへのアクセスが必要です。

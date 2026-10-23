@@ -5,11 +5,11 @@
       "name" : "Synth",
       "path" : "/Users/Shared/Program/Xcode/Synth",
       "projects" : [
-        "29f420c027726183b6d1d7e0b25f29761549151c77bb240287102f6e35d24968",
+        "9334ec281fb76d5392cd76c869bdb9c40738fd688e7a92a01511596c7d7d82e5",
         "d6d76e554f1d2074c8e2caf8adc12283ad7bad760c5bd6af0ded45c6189c5101"
       ]
     },
-    "signature" : "79726ae93dc8185581214718b7951d3c1a02018403e4045ff445ac2b2fc7e31a",
+    "signature" : "08209e6902a7fbdbacf2d8512db661fbf369a15a8b865cc7333042c076f6d39e",
     "type" : "workspace"
   },
   {
@@ -457,12 +457,12 @@
       "projectIsPackage" : "true",
       "projectName" : "Synth",
       "targets" : [
-        "e6557bd942c87904ec2088595a811fa03d722b9bed5a5ddf074fad3c4021f3ca",
-        "ac6a2fe83526f466fe90cf2efbabe6a2eec85df1d663a85c67fe03b4bf1fd77f",
+        "9db78850982cdda4139072fac8df6a7de52eff7c1d72f983c3d92a6539517f43",
+        "49aac77f7dc517af9c3565e510e1daf7ef2a00f1e561134743eb4b099d1887f6",
         "537a4015f8b92c77b02ef4cb77d4577daa305262478e5215d15589a0d728267a"
       ]
     },
-    "signature" : "29f420c027726183b6d1d7e0b25f29761549151c77bb240287102f6e35d24968",
+    "signature" : "9334ec281fb76d5392cd76c869bdb9c40738fd688e7a92a01511596c7d7d82e5",
     "type" : "project"
   },
   {
@@ -480,7 +480,8 @@
             "MACOSX_DEPLOYMENT_TARGET" : "13.0",
             "OTHER_SWIFT_FLAGS" : [
               "$(inherited)",
-              "$(OTHER_SWIFT_FLAGS_ENABLE_LIBFUZZER_$(ENABLE_LIBFUZZER))"
+              "$(OTHER_SWIFT_FLAGS_ENABLE_LIBFUZZER_$(ENABLE_LIBFUZZER))",
+              "-O"
             ],
             "OTHER_SWIFT_FLAGS_ENABLE_LIBFUZZER_YES" : [
               "-Xfrontend",
@@ -717,7 +718,7 @@
       "productTypeIdentifier" : "com.apple.product-type.tool",
       "type" : "standard"
     },
-    "signature" : "e6557bd942c87904ec2088595a811fa03d722b9bed5a5ddf074fad3c4021f3ca",
+    "signature" : "9db78850982cdda4139072fac8df6a7de52eff7c1d72f983c3d92a6539517f43",
     "type" : "target"
   },
   {
@@ -738,7 +739,8 @@
               "-Xfrontend",
               "-entry-point-function-name",
               "-Xfrontend",
-              "SynthApp_main"
+              "SynthApp_main",
+              "-O"
             ],
             "PACKAGE_RESOURCE_TARGET_KIND" : "regular",
             "PRODUCT_BUNDLE_IDENTIFIER" : "synth.SynthApp",
@@ -1003,7 +1005,7 @@
       "productTypeIdentifier" : "org.swift.product-type.common.object",
       "type" : "standard"
     },
-    "signature" : "ac6a2fe83526f466fe90cf2efbabe6a2eec85df1d663a85c67fe03b4bf1fd77f",
+    "signature" : "49aac77f7dc517af9c3565e510e1daf7ef2a00f1e561134743eb4b099d1887f6",
     "type" : "target"
   },
   {

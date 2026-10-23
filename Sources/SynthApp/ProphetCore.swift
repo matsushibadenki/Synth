@@ -17,6 +17,40 @@ final class SharedSynthParameters {
         defer { lock.unlock() }
         return raw
     }
+
+    func trySnapshot() -> SynthParameters? {
+        guard lock.try() else { return nil }
+        defer { lock.unlock() }
+        return raw
+    }
+}
+
+private struct HeldMIDIKeys {
+    private var lower: UInt64 = 0
+    private var upper: UInt64 = 0
+    func contains(_ note: Int) -> Bool {
+        let bit = UInt64(1) << (note & 63)
+        return (note < 64 ? lower : upper) & bit != 0
+    }
+    mutating func insert(_ note: Int) {
+        if note < 64 { lower |= UInt64(1) << note }
+        else { upper |= UInt64(1) << (note-64) }
+    }
+    mutating func remove(_ note: Int) {
+        if note < 64 { lower &= ~(UInt64(1) << note) }
+        else { upper &= ~(UInt64(1) << (note-64)) }
+    }
+    mutating func removeAll() { lower = 0; upper = 0 }
+    func min() -> Int? {
+        if lower != 0 { return lower.trailingZeroBitCount }
+        if upper != 0 { return upper.trailingZeroBitCount+64 }
+        return nil
+    }
+}
+
+private struct PendingNoteEvent {
+    var note = 0
+    var on = false
 }
 
 // Component values below are restrained behavioral approximations, not measured
@@ -76,25 +110,28 @@ private struct VoiceCard {
             seed = 1664525 &* seed &+ 1013904223
             return Float(seed >> 8) / 8388607.5 - 1
         }
-        pitchA = next()*0.65; pitchB = next()*0.65
-        scaleA = next()*0.14; scaleB = next()*0.14
+        pitchA = next()*0.10; pitchB = next()*0.10
+        scaleA = next()*0.025; scaleB = next()*0.025
         filterOctaves = next()*0.035; resonanceGain = 1+next()*0.012
         amplifierGain = 1+next()*0.014
         pulseA = next()*0.0018; pulseB = next()*0.0018
         filterTimes = SIMD3(1+next()*0.045,1+next()*0.045,1+next()*0.045)
         amplifierTimes = SIMD3(1+next()*0.045,1+next()*0.045,1+next()*0.045)
         filterSustain = next()*0.008; amplifierSustain = next()*0.008
-        fastA = AnalogWander(seed:seed &+ 11,minimum:0.7,range:1.8)
+        fastA = AnalogWander(seed:seed &+ 11,minimum:3,range:4)
         slowA = AnalogWander(seed:seed &+ 29,minimum:7,range:12)
-        fastB = AnalogWander(seed:seed &+ 67,minimum:0.8,range:1.9)
+        fastB = AnalogWander(seed:seed &+ 67,minimum:3.5,range:4)
         slowB = AnalogWander(seed:seed &+ 101,minimum:8,range:13)
         thermal = AnalogWander(seed:seed &+ 151,minimum:11,range:19)
         advance(seconds:0,tuneCoefficient:0)
     }
     mutating func advance(seconds: Double, tuneCoefficient: Float) {
         let heat = thermal.advance(seconds:seconds)
-        rawA = pitchA + 1.15*fastA.advance(seconds:seconds) + 0.85*slowA.advance(seconds:seconds) + heat*0.45
-        rawB = pitchB + 1.15*fastB.advance(seconds:seconds) + 0.85*slowB.advance(seconds:seconds) + heat*0.45
+        // Keep independent VCO motion subtle: relative pitch wander produces
+        // audible amplitude beating when equal-level waves are mixed. Most
+        // temperature motion is shared within a card, without locking phases.
+        rawA = pitchA + 0.04*fastA.advance(seconds:seconds) + 0.08*slowA.advance(seconds:seconds) + heat*0.45
+        rawB = pitchB + 0.04*fastB.advance(seconds:seconds) + 0.08*slowB.advance(seconds:seconds) + heat*0.45
         tuneA += (targetTuneA-tuneA)*tuneCoefficient
         tuneB += (targetTuneB-tuneB)*tuneCoefficient
         centsA = rawA-tuneA; centsB = rawB-tuneB
@@ -262,6 +299,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private var outputBusArray: AUAudioUnitBusArray!
     private var inputBusArray: AUAudioUnitBusArray!
     private let params: SharedSynthParameters
+    private var renderParameters = SynthParameters()
 
     private var sampleRateF: Float = 48_000
     private var voices = (0..<5).map { VoiceState(index:$0) }
@@ -276,10 +314,15 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private var lfoPhase: Double = 0
     private var pink = SIMD3<Float>(repeating: 0)
     private var referencePhase: Float = 0
-    private var heldKeys = Set<Int>()
+    private var heldKeys = HeldMIDIKeys()
     private var lastUnison = false
     private let eventLock = NSLock()
-    private var pendingEvents = [(Int, Bool)]()
+    // UI writes under the mutex. Audio only attempts the lock and otherwise
+    // continues with the previous state; event storage never grows in render.
+    private var pendingEvents = [PendingNoteEvent](repeating:PendingNoteEvent(),count:256)
+    private var renderEvents = [PendingNoteEvent](repeating:PendingNoteEvent(),count:256)
+    private var pendingEventCount = 0
+    private var pendingEventOverflow = false
     private var rngState: UInt32 = 0x1234ABCD
 
     override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions = []) throws {
@@ -298,6 +341,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     override func allocateRenderResources() throws {
         try super.allocateRenderResources()
         sampleRateF = Float(outputBus.format.sampleRate)
+        renderParameters = params.snapshot()
         effectsDSP = EffectsRackDSP(sampleRate:sampleRateF)
         oversampling = sampleRateF <= 48000 ? 4 : (sampleRateF <= 96000 ? 2 : 1)
         decimator = VoiceDecimator(factor:oversampling)
@@ -307,21 +351,37 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     override var internalRenderBlock: AUInternalRenderBlock {
         return { [weak self] _, _, frameCount, _, outputData, _, _ in
             guard let self else { return noErr }
-            let p = self.params.snapshot()
+            if let latest = self.params.trySnapshot() { self.renderParameters = latest }
+            let p = self.renderParameters
             if let configuration=self.effects.trySnapshot() { self.effectsDSP.prepare(configuration) }
-            self.eventLock.lock()
-            let events = self.pendingEvents
-            self.pendingEvents.removeAll(keepingCapacity: true)
-            self.eventLock.unlock()
+            var eventCount = 0
+            var eventOverflow = false
+            if self.eventLock.try() {
+                eventOverflow = self.pendingEventOverflow
+                if !eventOverflow {
+                    eventCount = self.pendingEventCount
+                    for index in 0..<eventCount { self.renderEvents[index] = self.pendingEvents[index] }
+                }
+                self.pendingEventCount = 0
+                self.pendingEventOverflow = false
+                self.eventLock.unlock()
+            }
+            if eventOverflow {
+                // Never strand a held note if a producer floods the bounded queue.
+                self.heldKeys.removeAll()
+                for index in self.voices.indices { self.voices[index].held = false }
+            }
             if p.unisonMode != self.lastUnison {
                 self.lastUnison = p.unisonMode
                 for i in self.voices.indices { self.voices[i].held = false }
-                let notes = self.heldKeys.sorted()
+                let notes = self.heldKeys
                 self.heldKeys.removeAll()
-                for note in notes { self.handleNoteOn(note, velocity: 1, parameters:p) }
+                for note in 0..<128 where notes.contains(note) { self.handleNoteOn(note, velocity: 1, parameters:p) }
             }
-            for (note, on) in events {
-                if on { self.handleNoteOn(note, velocity: 1, parameters:p) } else { self.handleNoteOff(note, parameters:p) }
+            for index in 0..<eventCount {
+                let event = self.renderEvents[index]
+                if event.on { self.handleNoteOn(event.note, velocity: 1, parameters:p) }
+                else { self.handleNoteOff(event.note, parameters:p) }
             }
 
             if p.autoTuneTrigger != self.lastAutoTuneTrigger {
@@ -464,7 +524,10 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private func enqueue(_ midi: Int, on: Bool) {
         guard (0...127).contains(midi) else { return }
         eventLock.lock()
-        pendingEvents.append((midi,on))
+        if pendingEventCount < pendingEvents.count && !pendingEventOverflow {
+            pendingEvents[pendingEventCount] = PendingNoteEvent(note:midi,on:on)
+            pendingEventCount += 1
+        } else { pendingEventOverflow = true }
         eventLock.unlock()
     }
 

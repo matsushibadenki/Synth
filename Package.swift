@@ -13,7 +13,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "SynthApp",
-            path: "Sources/SynthApp"
+            path: "Sources/SynthApp",
+            // Audio must meet the device deadline when launched with Xcode Run,
+            // too. Keep debug symbols, but optimize the per-sample Swift DSP.
+            swiftSettings: [.unsafeFlags(["-O"], .when(configuration: .debug))]
         )
     ]
 )

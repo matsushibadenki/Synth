@@ -10,7 +10,7 @@ struct SynthParameters: Equatable {
     var oscAFrequency: Float = 24
     var oscAPulseWidth: Float = 0.5
     var oscBFrequency: Float = 24
-    var oscBFineCents: Float = 5
+    var oscBFineCents: Float = 0
     var oscBPulseWidth: Float = 0.5
     var oscALevel: Float = 0.7
     var oscBLevel: Float = 0.7

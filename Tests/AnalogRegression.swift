@@ -14,7 +14,9 @@ func checkAnalogCards() {
             let before = cards[i].centsA
             cards[i].advance(seconds:0.001,tuneCoefficient:1-expf(-1/60))
             if frame > 0 { largestStep = max(largestStep,abs(before-cards[i].centsA)) }
-            precondition(abs(cards[i].centsA)<3.2 && abs(cards[i].centsB)<3.2)
+            precondition(abs(cards[i].centsA)<0.68 && abs(cards[i].centsB)<0.68)
+            precondition(abs(cards[i].centsA-cards[i].centsB)<0.45,
+                         "Independent wander must not impose a fast detune beat at Fine=0")
             if frame%10 == 0 { tracks[i].append(cards[i].centsA) }
         }
     }
@@ -22,7 +24,7 @@ func checkAnalogCards() {
     for i in cards.indices {
         let mean=tracks[i].reduce(0,+)/Float(tracks[i].count)
         let spread=rms(tracks[i].map { $0-mean })
-        precondition(spread>0.15 && spread<2,"Drift should be audible but restrained")
+        precondition(spread>0.02 && spread<0.5,"Slow thermal motion should remain subtle but nonzero")
         for j in 0..<i { precondition(tracks[i] != tracks[j],"Cards must not share a trajectory") }
         let original=cards[i].rawA
         cards[i].tune()
@@ -166,10 +168,43 @@ func checkPitchGlide() {
     print("Log-pitch glide converges within 0.2 cent at 48/192 kHz")
 }
 
+// Measure the actual dry AU output after attack/decay. An 80 ms RMS window
+// distinguishes rapid pumping from the remaining slow free-running phase motion.
+func checkSustainBeating() throws {
+    func measure(_ p: SynthParameters, note: Int) throws -> (spread: Float, step: Float) {
+        let probe=try AudioProbe(p)
+        probe.unit.noteOn(note,velocity:1)
+        _=probe.samples(200)
+        var levels=[Float]()
+        for _ in 0..<100 { levels.append(20*log10f(max(0.0000001,rms(probe.samples(15))))) }
+        let sorted=levels.sorted()
+        let step=zip(levels,levels.dropFirst()).map { abs($0-$1) }.max()!
+        return (sorted[95]-sorted[5],step)
+    }
+    var p=SynthParameters()
+    precondition(p.oscBFineCents == 0)
+    for note in [48,72,84] {
+        let result=try measure(p,note:note)
+        precondition(result.step<0.35,"Neutral Fine must avoid rapid amplitude pumping")
+        print("Dry sustain MIDI \(note): 5–95% RMS span \(result.spread) dB, max 80 ms change \(result.step) dB")
+    }
+    p.oscBLevel=0
+    let single=try measure(p,note:72)
+    precondition(single.spread<0.1,"An isolated oscillator must not acquire unintended tremolo")
+    p.oscBLevel=0.7; p.oscBFineCents=5
+    let data=try JSONEncoder().encode(Rev3Program(p))
+    let recalled=try JSONDecoder().decode(Rev3Program.self,from:data).applying(to:SynthParameters())!
+    precondition(recalled.oscBFineCents == 5,"Saved intentional detune must survive the default change")
+    let detuned=try measure(recalled,note:72)
+    precondition(detuned.spread>3 && detuned.step>0.3,"Fine must still create natural beating; do not flatten with AGC or phase locking")
+    print("Dry sustain: single VCO span \(single.spread) dB; saved Fine=5 span \(detuned.spread) dB")
+}
+
 checkPitchGlide()
 checkAnalogCards()
 checkAnalogEnvelopes()
 checkCurtisResponse()
 checkDecimation()
 try checkFreeRunningAndPerformance()
+try checkSustainBeating()
 print("Analog regression checks passed")
