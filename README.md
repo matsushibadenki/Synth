@@ -1,5 +1,9 @@
 # Synth — 05 Rev3 inspired
 
+<img src="docs/images/synth-image1.png">
+<img src="docs/images/synth-image2.png">
+<img src="docs/images/synth-image3.png">
+
 SwiftUI / Metal / AUAudioUnitによる5ボイスの減算合成シンセです。参考画像のシアン／黄緑、金属キャップ付きノブ、黒い筐体を維持し、音色パラメーターをオリジナルRev3に統一しています。
 A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls and the supplied cyan/lime visual reference.
 基于SwiftUI / Metal的五声部减法合成器，采用原版Rev3音色参数及参考图的青色／黄绿色设计。
