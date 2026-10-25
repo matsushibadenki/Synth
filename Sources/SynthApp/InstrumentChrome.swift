@@ -144,6 +144,7 @@ struct ProgrammerPanel: View {
     let status: String
     let recall: () -> Void
     let record: () -> Void
+    var loadPreset: ((InstrumentPreset) -> Void)? = nil
     var compact = false
     var splitKeys = false
 
@@ -249,9 +250,19 @@ struct ProgrammerPanel: View {
     }
     private var actions: some View {
         HStack(spacing:6) {
-            Button(action:recall) { Image(systemName:"arrow.down.doc").frame(width:32,height:32) }
-                .help(instrumentText("Recall program","音色を読み込む","载入音色"))
-                .accessibilityLabel(instrumentText("Recall program","音色を読み込む","载入音色"))
+            Menu {
+                Button(action:recall) { Label(instrumentText("Recall saved program","保存音色を読み込む","载入已存音色"),systemImage:"arrow.down.doc") }
+                if let loadPreset {
+                    Section(instrumentText("Instrument presets","楽器プリセット","乐器预设")) {
+                        ForEach(InstrumentPreset.allCases) { preset in
+                            Button(instrumentText(preset.names[0],preset.names[1],preset.names[2])) { loadPreset(preset) }
+                        }
+                    }
+                }
+            } label: { Image(systemName:"arrow.down.doc").frame(width:32,height:32) }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .help(instrumentText("Recall / Piano / Violin. Bypass FX for a dry comparison.","音色読込／ピアノ／バイオリン。音源の比較時はFXをOFFにしてください。","载入／钢琴／小提琴。比较干声时请关闭效果。"))
+                .accessibilityLabel(instrumentText("Recall and instrument presets","音色読込と楽器プリセット","载入与乐器预设"))
             Button(action:record) { Image(systemName:"record.circle").frame(width:32,height:32) }
                 .help(instrumentText("Record program","音色を保存","保存音色"))
                 .accessibilityLabel(instrumentText("Record program","音色を保存","保存音色"))

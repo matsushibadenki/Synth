@@ -2,22 +2,20 @@
 // Rev3Regression; compile with -O. Offline tests never start an audio device.
 func checkAnalogCards() {
     var startup=VoiceCard(index:0)
-    precondition(abs(startup.rawA)>0.00001)
+    precondition(abs(startup.rawPitch)>0.00001)
     startup.tune()
     startup.advance(seconds:0,tuneCoefficient:1)
-    precondition(abs(startup.centsA)<0.00001,"Tune must work before the first rendered sample")
+    precondition(abs(startup.cents)<0.00001,"Tune must work before the first rendered sample")
     var cards = (0..<5).map { VoiceCard(index:$0) }
     var tracks = [[Float]](repeating:[],count:5)
     var largestStep: Float = 0
     for frame in 0..<30000 {
         for i in cards.indices {
-            let before = cards[i].centsA
+            let before = cards[i].cents
             cards[i].advance(seconds:0.001,tuneCoefficient:1-expf(-1/60))
-            if frame > 0 { largestStep = max(largestStep,abs(before-cards[i].centsA)) }
-            precondition(abs(cards[i].centsA)<0.68 && abs(cards[i].centsB)<0.68)
-            precondition(abs(cards[i].centsA-cards[i].centsB)<0.45,
-                         "Independent wander must not impose a fast detune beat at Fine=0")
-            if frame%10 == 0 { tracks[i].append(cards[i].centsA) }
+            if frame > 0 { largestStep = max(largestStep,abs(before-cards[i].cents)) }
+            precondition(abs(cards[i].cents)<0.68)
+            if frame%10 == 0 { tracks[i].append(cards[i].cents) }
         }
     }
     precondition(largestStep<0.015,"Wander must have no discontinuous random steps")
@@ -26,20 +24,20 @@ func checkAnalogCards() {
         let spread=rms(tracks[i].map { $0-mean })
         precondition(spread>0.02 && spread<0.5,"Slow thermal motion should remain subtle but nonzero")
         for j in 0..<i { precondition(tracks[i] != tracks[j],"Cards must not share a trajectory") }
-        let original=cards[i].rawA
+        let original=cards[i].rawPitch
         cards[i].tune()
         for _ in 0..<1000 { cards[i].advance(seconds:0,tuneCoefficient:0.02) }
-        precondition(abs(cards[i].centsA)<0.00002)
-        precondition(cards[i].rawA == original,"Tune must not reset temperature or random state")
+        precondition(abs(cards[i].cents)<0.00002)
+        precondition(cards[i].rawPitch == original,"Tune must not reset temperature or random state")
         for _ in 0..<5000 { cards[i].advance(seconds:0.001,tuneCoefficient:0.02) }
-        precondition(abs(cards[i].centsA)>0.01,"Wander must continue after tuning")
+        precondition(abs(cards[i].cents)>0.01,"Wander must continue after tuning")
     }
     var slow=VoiceCard(index:2), fast=VoiceCard(index:2)
     for frame in 0..<15000 {
         slow.advance(seconds:0.001,tuneCoefficient:0)
         for _ in 0..<48 { fast.advance(seconds:1/48000,tuneCoefficient:0) }
         if frame%100 == 0 {
-            precondition(abs(slow.rawA-fast.rawA)<0.00001 && abs(slow.rawB-fast.rawB)<0.00001,"Drift is measured in seconds, not samples")
+            precondition(abs(slow.rawPitch-fast.rawPitch)<0.00001,"Drift is measured in seconds, not samples")
         }
     }
     print("Analog cards: five independent bounded trajectories, smooth drift, sample-rate invariance and Tune passed")
@@ -168,8 +166,7 @@ func checkPitchGlide() {
     print("Log-pitch glide converges within 0.2 cent at 48/192 kHz")
 }
 
-// Measure the actual dry AU output after attack/decay. An 80 ms RMS window
-// distinguishes rapid pumping from the remaining slow free-running phase motion.
+// Measure both rapid changes and slow level drift, not just adjacent windows.
 func checkSustainBeating() throws {
     func measure(_ p: SynthParameters, note: Int) throws -> (spread: Float, step: Float) {
         let probe=try AudioProbe(p)
@@ -185,6 +182,7 @@ func checkSustainBeating() throws {
     precondition(p.oscBFineCents == 0)
     for note in [48,72,84] {
         let result=try measure(p,note:note)
+        precondition(result.spread<0.25,"Neutral Fine must also avoid slow amplitude swells")
         precondition(result.step<0.35,"Neutral Fine must avoid rapid amplitude pumping")
         print("Dry sustain MIDI \(note): 5–95% RMS span \(result.spread) dB, max 80 ms change \(result.step) dB")
     }
@@ -200,6 +198,37 @@ func checkSustainBeating() throws {
     print("Dry sustain: single VCO span \(single.spread) dB; saved Fine=5 span \(detuned.spread) dB")
 }
 
+extension ProphetLikeAudioUnit {
+    // Test-only selection exercises every production card/phase identity through
+    // the actual render path without sustaining other notes in the mix.
+    fileprivate func selectSustainCard(_ index: Int) { voices[0] = VoiceState(index:index) }
+    fileprivate var sustainPhaseDifference: Double { voices[0].phaseA-voices[0].phaseB }
+}
+
+func checkLongSustain() throws {
+    for (card,note) in [(0,48),(0,72),(0,84),(1,72),(2,72),(3,72),(4,72)] {
+        let probe=try AudioProbe(SynthParameters())
+        probe.unit.selectSustainCard(card)
+        // Idle time must not accumulate a hidden A/B detune before playing.
+        _=probe.samples(200)
+        probe.unit.noteOn(note,velocity:1)
+        _=probe.samples(375)
+        let phase=probe.unit.sustainPhaseDifference
+        var levels=[Float]()
+        for window in 0..<375 {
+            if window == 187 { probe.parameters.set { $0.autoTuneTrigger &+= 1 } }
+            levels.append(20*log10f(max(1e-8,rms(probe.samples(15)))))
+        }
+        let sorted=levels.sorted()
+        let span=sorted[356]-sorted[18], fullSpan=sorted.last!-sorted.first!
+        precondition(span<0.25 && fullSpan<0.4,"Fine=0 must stay stable over 30 seconds, including Tune")
+        let phaseChange=probe.unit.sustainPhaseDifference-phase
+        precondition(abs(sin(phaseChange))<1e-7 && cos(phaseChange)>0.999999,
+                     "Incidental drift/Tune must not change relative phase for equal-frequency VCOs")
+        print("30 s sustain card \(card+1), MIDI \(note): P5–95 \(span) dB, full span \(fullSpan) dB")
+    }
+}
+
 checkPitchGlide()
 checkAnalogCards()
 checkAnalogEnvelopes()
@@ -207,4 +236,5 @@ checkCurtisResponse()
 checkDecimation()
 try checkFreeRunningAndPerformance()
 try checkSustainBeating()
+try checkLongSustain()
 print("Analog regression checks passed")

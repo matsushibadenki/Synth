@@ -90,7 +90,7 @@ private struct AnalogWander {
 }
 
 private struct VoiceCard {
-    let pitchA: Float, pitchB: Float, scaleA: Float, scaleB: Float
+    let pitchBias: Float, scaleError: Float
     let filterOctaves: Float, resonanceGain: Float, amplifierGain: Float
     let pulseA: Float, pulseB: Float
     let filterTimes: SIMD3<Float>, amplifierTimes: SIMD3<Float>
@@ -98,11 +98,11 @@ private struct VoiceCard {
     var fastA: AnalogWander, slowA: AnalogWander
     var fastB: AnalogWander, slowB: AnalogWander
     var thermal: AnalogWander
-    private(set) var rawA: Float = 0, rawB: Float = 0
-    private(set) var centsA: Float = 0, centsB: Float = 0
+    private(set) var rawPitch: Float = 0
+    private(set) var cents: Float = 0
     private(set) var filterDrift: Float = 0
-    private var tuneA: Float = 0, tuneB: Float = 0
-    private var targetTuneA: Float = 0, targetTuneB: Float = 0
+    private var tuneCorrection: Float = 0
+    private var targetTune: Float = 0
 
     init(index: Int) {
         var seed = UInt32(index+1) &* 0x9E3779B9
@@ -110,8 +110,9 @@ private struct VoiceCard {
             seed = 1664525 &* seed &+ 1013904223
             return Float(seed >> 8) / 8388607.5 - 1
         }
-        pitchA = next()*0.10; pitchB = next()*0.10
-        scaleA = next()*0.025; scaleB = next()*0.025
+        // Consume the same random draws so filter/envelope/VCA identities stay fixed.
+        pitchBias = (next()+next())*0.05
+        scaleError = (next()+next())*0.0125
         filterOctaves = next()*0.035; resonanceGain = 1+next()*0.012
         amplifierGain = 1+next()*0.014
         pulseA = next()*0.0018; pulseB = next()*0.0018
@@ -127,20 +128,21 @@ private struct VoiceCard {
     }
     mutating func advance(seconds: Double, tuneCoefficient: Float) {
         let heat = thermal.advance(seconds:seconds)
-        // Keep independent VCO motion subtle: relative pitch wander produces
-        // audible amplitude beating when equal-level waves are mixed. Most
-        // temperature motion is shared within a card, without locking phases.
-        rawA = pitchA + 0.04*fastA.advance(seconds:seconds) + 0.08*slowA.advance(seconds:seconds) + heat*0.45
-        rawB = pitchB + 0.04*fastB.advance(seconds:seconds) + 0.08*slowB.advance(seconds:seconds) + heat*0.45
-        tuneA += (targetTuneA-tuneA)*tuneCoefficient
-        tuneB += (targetTuneB-tuneB)*tuneCoefficient
-        centsA = rawA-tuneA; centsB = rawB-tuneB
+        // Couple incidental A/B tuning within a card. Even a tiny independent
+        // frequency error integrates into deep beating on long equal-level notes.
+        // Preserve per-card motion and free-running phases; explicit Fine and
+        // modulation still change the oscillator frequencies independently.
+        let fast = (fastA.advance(seconds:seconds)+fastB.advance(seconds:seconds))*0.02
+        let slow = (slowA.advance(seconds:seconds)+slowB.advance(seconds:seconds))*0.04
+        rawPitch = pitchBias + fast + slow + heat*0.45
+        tuneCorrection += (targetTune-tuneCorrection)*tuneCoefficient
+        cents = rawPitch-tuneCorrection
         filterDrift = heat*0.006
     }
     mutating func tune() {
         // Capture current temperature bias; do not restart the random trajectories
         // or oscillator phases. Slewing the correction avoids an instantaneous jump.
-        targetTuneA = rawA; targetTuneB = rawB
+        targetTune = rawPitch
     }
 }
 
@@ -177,6 +179,39 @@ private struct AnalogEnvelope {
             level -= level*c.release
             if level < 0.00001 { level = 0 }
         }
+    }
+}
+
+// Four trapezoidal one-pole stages with a bounded nonlinear feedback loop.
+// An original ladder-inspired color; no measured hardware matching is implied.
+struct LadderColorFilter {
+    private var state = SIMD4<Float>.zero
+    private var previous: Float = 0
+    mutating func process(_ input: Float,cutoff: Float,resonance: Float,drive: Float,
+                          feedback: Float,slope: Float,sampleRate: Float) -> Float {
+        let g=tanf(.pi*min(sampleRate*0.2,max(5,cutoff))/sampleRate)
+        let G=g/(1+g), G2=G*G, G3=G2*G, G4=G2*G2
+        let memory=(G3*state.x+G2*state.y+G*state.z+state.w)/(1+g)
+        let k=ExpressionParameters.unit(resonance)*3.8
+        let gain=1+ExpressionParameters.unit(drive)*5
+        let source=tanhf((input+previous*ExpressionParameters.unit(feedback)*0.7)*gain)*0.65
+        var u=(source-k*memory)/(1+k*G4)
+        for _ in 0..<3 {
+            let t=tanhf(source-k*(G4*u+memory))
+            u -= (u-t)/(1+k*G4*(1-t*t))
+        }
+        var taps=SIMD4<Float>.zero
+        for i in 0..<4 {
+            let delta=(u-state[i])*G
+            u=state[i]+delta
+            state[i]=u+delta
+            taps[i]=u
+        }
+        previous=tanhf(taps.w)
+        let position=ExpressionParameters.unit(slope)*3
+        let lower=min(2,Int(position)),fraction=position-Float(lower)
+        let output=taps[lower]*(1-fraction)+taps[lower+1]*fraction
+        return tanhf(output*(1+ExpressionParameters.unit(drive)*2))
     }
 }
 
@@ -270,6 +305,7 @@ private struct VoiceState {
     var targetHz: Float = 261.63
     var glideHz: Float = 261.63
     var glide = PitchGlide()
+    var subPhase: Double = 0
     var phaseA: Double
     var phaseB: Double
     var card: VoiceCard
@@ -278,6 +314,7 @@ private struct VoiceState {
     var filterCoefficients = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
     var ampCoefficients = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
     var filter = CurtisFilter()
+    var ladderFilter = LadderColorFilter()
     var dcInput: Float = 0, dcOutput: Float = 0
     init(index: Int) {
         card = VoiceCard(index:index)
@@ -311,6 +348,9 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private var rrCursor: Int = 0
 
     private var lastAutoTuneTrigger: UInt32 = 0
+    private var expressionPhase: Float = 0
+    private var expressionAmounts = SIMD3<Float>.zero
+    private var colorAmounts = SIMD4<Float>(0,0,0,1)
     private var lfoPhase: Double = 0
     private var pink = SIMD3<Float>(repeating: 0)
     private var referencePhase: Float = 0
@@ -428,6 +468,11 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                 for i in 0..<Int(frameCount) {
                     self.smoothedControls += (controlTarget-self.smoothedControls)*controlSlew
                     let controls = self.smoothedControls
+                    self.expressionAmounts += (p.expression.amounts-self.expressionAmounts)*controlSlew
+                    self.expressionPhase += 2 * .pi * p.expression.rateHz / hostRate
+                    self.expressionPhase.formTruncatingRemainder(dividingBy:2 * .pi)
+                    self.colorAmounts += (p.expression.colorAmounts-self.colorAmounts)*controlSlew
+                    let motion = sinf(self.expressionPhase)*self.expressionAmounts.y*0.16
                     for vi in voiceBuffer.indices {
                         voiceBuffer[vi].card.advance(seconds:1/Double(hostRate),tuneCoefficient:tuneSlew)
                     }
@@ -455,15 +500,15 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                             voiceBuffer[vi].glideHz = voiceBuffer[vi].glide.advance(target:glideTarget,coefficient:glideCoefficient,
                                 enabled:p.unisonMode && p.glideTime > 0)
                             let card = voiceBuffer[vi].card
-                            let pitchOctaves = log2f(voiceBuffer[vi].glideHz/261.6256)
                             let trackB = p.oscBKeyboardTrack ? voiceBuffer[vi].glideHz : 261.6256*tuningRatio
                             let baseB = p.oscBLowFreqMode ? 0.4 * powf(75, p.oscBFrequency/48) * (trackB/261.6256) : trackB * ratioB
-                            var hzB = baseB * powf(2, (p.oscBFineCents+card.centsB+card.scaleB*log2f(max(0.01,baseB)/261.6256))/1200)
+                            var hzB = baseB * powf(2, (p.oscBFineCents+card.cents+card.scaleError*log2f(max(0.01,baseB)/261.6256))/1200)
                             if p.lfoToOscB { hzB *= powf(2, wheel*2) }
                             let pwB = controls[6]+card.pulseB + (p.lfoToPWB ? wheel*0.49 : 0)
                             let sourceB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:min(0.45,hzB/sr))
                             let poly = p.polyModFilterEnv*voiceBuffer[vi].filterEnvelope.level + p.polyModOscB*sourceB
-                            var hzA = voiceBuffer[vi].glideHz * ratioA * powf(2,(card.centsA+card.scaleA*(pitchOctaves+(p.oscAFrequency-24)/12))/1200)
+                            let baseA = voiceBuffer[vi].glideHz * ratioA
+                            var hzA = baseA * powf(2,(card.cents+card.scaleError*log2f(max(0.01,baseA)/261.6256))/1200)
                             if p.polyModToFreqA { hzA *= powf(2,poly*4) }
                             if p.lfoToOscA { hzA *= powf(2,wheel*2) }
 
@@ -482,15 +527,25 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                             let pwA = controls[5]+card.pulseA + (p.lfoToPWA ? wheel*0.49 : 0) + (p.polyModToPWA ? poly*0.49 : 0)
                             let oscA = self.oscillator(phase:voiceBuffer[vi].phaseA, saw:p.oscASaw, triangle:false, pulse:p.oscAPulse, width:pwA, step:hzA/sr)
                             let oscB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:hzB/sr)
-                            let mix = oscA*controls[2] + oscB*controls[3] + white*controls[4]
+                            voiceBuffer[vi].subPhase += Double.pi * Double(min(sr*0.45,voiceBuffer[vi].glideHz)) / Double(sr)
+                            voiceBuffer[vi].subPhase.formTruncatingRemainder(dividingBy:2 * .pi)
+                            let sub = sinf(Float(voiceBuffer[vi].subPhase))*self.expressionAmounts.x*0.6
+                            let mix = oscA*controls[2] + oscB*controls[3] + white*controls[4] + sub
                             let kbTrack = p.filterKeyboardTrack ? log2f(max(0.001,voiceBuffer[vi].glideHz/261.6256))/log2f(1000) : 0
                             let wheelFilter = p.lfoToFilter ? wheel*0.5 : 0
                             let envFilter = controls[7]*voiceBuffer[vi].filterEnvelope.level + (p.polyModToFilter ? poly*0.5 : 0)
-                            var cutoffNorm = controls[0] + kbTrack + wheelFilter + envFilter + (card.filterOctaves+card.filterDrift)/log2f(1000)
+                            var cutoffNorm = controls[0] + kbTrack + wheelFilter + envFilter + motion + (card.filterOctaves+card.filterDrift)/log2f(1000)
                             cutoffNorm = min(0.99, max(0.001, cutoffNorm))
                             let cutoffHz = 20.0 * powf(1000.0, cutoffNorm)
-                            let filtered = voiceBuffer[vi].filter.process(mix+white*0.0000001,cutoff:cutoffHz,
+                            var filtered = voiceBuffer[vi].filter.process(mix+white*0.0000001,cutoff:cutoffHz,
                                 resonance:controls[1]*card.resonanceGain,sampleRate:sr)
+                            if self.colorAmounts.x > 0.000001 {
+                                let color=voiceBuffer[vi].ladderFilter.process(mix+white*0.0000001,
+                                    cutoff:cutoffHz,resonance:controls[1]*card.resonanceGain,
+                                    drive:self.colorAmounts.y,feedback:self.colorAmounts.z,
+                                    slope:self.colorAmounts.w,sampleRate:sr)
+                                filtered += (color-filtered)*self.colorAmounts.x
+                            }
                             // AC coupling removes pulse-width DC before the final VCA.
                             let coupled = filtered-voiceBuffer[vi].dcInput+dcPole*voiceBuffer[vi].dcOutput
                             voiceBuffer[vi].dcInput = filtered; voiceBuffer[vi].dcOutput = coupled
@@ -507,7 +562,9 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                         mono += reference*0.18
                     }
 
-                    let processed=self.effectsDSP.process(SIMD2(repeating:mono))
+                    // Linear pan preserves the mono sum and avoids a loudness jump.
+                    let pan = sinf(self.expressionPhase)*self.expressionAmounts.z
+                    let processed=self.effectsDSP.process(SIMD2(mono*(1-pan),mono*(1+pan)))
                     let volume=min(1,max(0,p.masterVolume))
                     left[i]=processed.x*volume
                     right[i]=processed.y*volume

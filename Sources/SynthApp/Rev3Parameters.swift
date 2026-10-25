@@ -3,6 +3,7 @@ import Foundation
 // Original Prophet-5 Rev3: 24 programmable potentiometers and 22 switches.
 // Source: Sequential CM1000D (2/82), sections 2 and 6-7, pp. 6-5–6-6.
 struct SynthParameters: Equatable {
+    var expression = ExpressionParameters()
     var polyModFilterEnv: Float = 0
     var polyModOscB: Float = 0
     var lfoRateHz: Float = 3
@@ -200,4 +201,84 @@ extension Rev3Program {
         if (old["glideOn"] as? Bool) == false { p.glideTime=0 }
         return Rev3Program(p)
     }
+}
+
+// Synthesized instrument references for judging attack, decay and sustained level.
+// Separate from user memory slots; no factory program data is installed or replaced.
+enum InstrumentPreset: String, CaseIterable, Identifiable {
+    case piano, violin
+    var id: String { rawValue }
+    var names: [String] {
+        switch self {
+        case .piano: return ["Piano", "ピアノ", "钢琴"]
+        case .violin: return ["Violin", "バイオリン", "小提琴"]
+        }
+    }
+    var program: Rev3Program {
+        var p=SynthParameters()
+        p.oscBFineCents=0; p.noiseLevel=0; p.unisonMode=false
+        p.lfoToOscA=false; p.lfoToOscB=false
+        switch self {
+        case .piano:
+            // Triangle body and a narrow upper-octave pulse give a rounded body
+            // with a bright hammer-like transient. Both envelopes decay to zero.
+            p.oscASaw=false; p.oscAPulse=true; p.oscAPulseWidth=0.18
+            p.oscAFrequency=36; p.oscALevel=0.38
+            p.oscBSaw=false; p.oscBTriangle=true; p.oscBLevel=0.65
+            p.cutoffNorm=0.48; p.resonance=0.10; p.filterEnvAmount=0.28
+            p.envAAttack=0.001; p.envADecay=0.65; p.envASustain=0; p.envARelease=0.18
+            p.envBAttack=0.001; p.envBDecay=2.4; p.envBSustain=0; p.envBRelease=0.18
+        case .violin:
+            // Bow-like swell, saw harmonics and a quiet triangle body. Vibrato
+            // is optional on the mod wheel, routed equally to both oscillators.
+            p.oscALevel=0.55; p.oscBSaw=false; p.oscBTriangle=true; p.oscBLevel=0.28
+            p.cutoffNorm=0.57; p.resonance=0.12; p.filterEnvAmount=0.08
+            p.envAAttack=0.09; p.envADecay=0.35; p.envASustain=0.75; p.envARelease=0.25
+            p.envBAttack=0.18; p.envBDecay=0.3; p.envBSustain=0.82; p.envBRelease=0.22
+            p.lfoRateHz=5; p.lfoToOscA=true; p.lfoToOscB=true
+        }
+        return Rev3Program(p)
+    }
+    func applying(to current: SynthParameters) -> SynthParameters {
+        var result=program.applying(to:current)!
+        // Neutral performance offsets make these reference sounds repeatable.
+        // Keep master volume/tuning and the Tune command counter owned by the player.
+        result.modWheel=0; result.pitchWheel=0; result.referenceA440=false
+        return result
+    }
+}
+
+// Separate from the original 46-setting program schema.
+struct ExpressionParameters: Codable, Equatable {
+    var enabled = false
+    var sub: Float = 0.25
+    var motion: Float = 0.2
+    var rate: Float = 0.4
+    var pan: Float = 0.3
+    var ladder: Float = 0
+    var drive: Float = 0
+    var feedback: Float = 0
+    var slope: Float = 1
+    init(enabled: Bool = false) { self.enabled=enabled }
+    private enum CodingKeys: String, CodingKey { case enabled, sub, motion, rate, pan, ladder, drive, feedback, slope }
+    init(from decoder: Decoder) throws {
+        let c=try decoder.container(keyedBy:CodingKeys.self)
+        enabled=try c.decodeIfPresent(Bool.self,forKey:.enabled) ?? false
+        sub=try c.decodeIfPresent(Float.self,forKey:.sub) ?? 0.25
+        motion=try c.decodeIfPresent(Float.self,forKey:.motion) ?? 0.2
+        rate=try c.decodeIfPresent(Float.self,forKey:.rate) ?? 0.4
+        pan=try c.decodeIfPresent(Float.self,forKey:.pan) ?? 0.3
+        ladder=try c.decodeIfPresent(Float.self,forKey:.ladder) ?? 0
+        drive=try c.decodeIfPresent(Float.self,forKey:.drive) ?? 0
+        feedback=try c.decodeIfPresent(Float.self,forKey:.feedback) ?? 0
+        slope=try c.decodeIfPresent(Float.self,forKey:.slope) ?? 1
+    }
+    var colorAmounts: SIMD4<Float> {
+        enabled ? SIMD4(Self.unit(ladder),Self.unit(drive),Self.unit(feedback),Self.unit(slope)) : SIMD4(0,0,0,Self.unit(slope))
+    }
+    static func unit(_ value: Float) -> Float { value.isFinite ? min(1,max(0,value)) : 0 }
+    var amounts: SIMD3<Float> {
+        enabled ? SIMD3(Self.unit(sub),Self.unit(motion),Self.unit(pan)) : .zero
+    }
+    var rateHz: Float { rate.isFinite ? min(8,max(0.05,rate)) : 0.4 }
 }

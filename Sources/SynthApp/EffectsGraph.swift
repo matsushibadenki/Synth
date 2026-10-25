@@ -10,7 +10,7 @@ enum EffectKind: Int, Codable, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var title: String {
         switch self {
-        case .synth: return "SYNTH / 05"
+        case .synth: return "SYNTH/05"
         case .dimension: return "DIMENSION / FLANGE"
         case .sky: return "SKY / REVERB"
         case .time: return "TIME / DELAY"

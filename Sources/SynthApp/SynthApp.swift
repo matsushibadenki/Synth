@@ -54,6 +54,7 @@ struct ContentView: View {
                     ScrollView {
                         VStack(spacing:0) {
                         if selectedTab == .synth {
+                            expressionPanel
                             InstrumentPanel(controls:controls,switches:switches,enabled:engine.isRunning,changed:apply,
                                             onUnavailable:{showEditor=true})
                             DisclosureGroup(isExpanded:$showEditor) {
@@ -74,12 +75,16 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear { loadProgram(); apply(); engine.start() }
+        .onAppear {
+            if let data=UserDefaults.standard.data(forKey:"synth.expression.v1"),
+               let expression=try? JSONDecoder().decode(ExpressionParameters.self,from:data) { parameters.expression=expression }
+            loadProgram(); apply(); engine.start()
+        }
     }
 
     private func sharedPanel(width: CGFloat) -> some View {
         SharedPerformancePanel(header:toolbar(panelWidth:width),file:$selectedFile,bank:$bank,program:$program,status:memoryStatus,
-                    recall:loadProgram,record:saveProgram,controls:controls,switches:switches.map { $0.value.wrappedValue },
+                    recall:loadProgram,record:saveProgram,loadPreset:loadInstrumentPreset,controls:controls,switches:switches.map { $0.value.wrappedValue },
                     enabled:engine.isRunning,changed:apply,noteOn:{engine.playNote($0)},noteOff:{engine.releaseNote($0)})
     }
 
@@ -116,7 +121,7 @@ struct ContentView: View {
         HStack(spacing:10) {
             PanelScrew()
             VStack(alignment:.leading,spacing:1) {
-                Text("SYNTH / 05").font(InstrumentFinish.wordmark).tracking(1).foregroundStyle(InstrumentFinish.ink)
+                Text("SYNTH/05").font(InstrumentFinish.wordmark).tracking(1).foregroundStyle(InstrumentFinish.ink)
                 Text("REV 3 · 5 VOICES / 2 VCO").font(InstrumentFinish.legend(8)).tracking(0.6).foregroundStyle(InstrumentFinish.muted)
             }.fixedSize()
         }
@@ -143,6 +148,10 @@ struct ContentView: View {
                 .accessibilityLabel(instrumentText("Power","電源","电源"))
                 .accessibilityValue(engine.isRunning ? instrumentText("On","オン","开"):instrumentText("Off","オフ","关"))
         }.buttonStyle(HardwareButtonStyle())
+    }
+
+    private var expressionPanel: some View {
+        ExpressionPanel(parameters:$parameters.expression,changed:apply)
     }
 
     private var nativeEditor: some View {
@@ -172,11 +181,22 @@ struct ContentView: View {
                 .accessibilityLabel(control.title).accessibilityValue(control.displayValue)
         }
     }
-    private func apply() { engine.sharedParams.set { $0=parameters } }
+    private func apply() {
+        engine.sharedParams.set { $0=parameters }
+        if let data=try? JSONEncoder().encode(parameters.expression) {
+            UserDefaults.standard.set(data,forKey:"synth.expression.v1")
+        }
+    }
     private func togglePower() {
         if engine.isRunning { engine.stop() } else { engine.start(); apply() }
     }
     private var memoryKey: String { "synth.rev3.v1.\(selectedFile).\(bank).\(program)" }
+    private func loadInstrumentPreset(_ preset: InstrumentPreset) {
+        engine.noteOffCurrent()
+        parameters=preset.applying(to:parameters)
+        apply()
+        memoryStatus=title(preset.names)
+    }
     private func saveProgram() {
         guard let data=try? JSONEncoder().encode(Rev3Program(parameters)) else { return }
         UserDefaults.standard.set(data,forKey:memoryKey)

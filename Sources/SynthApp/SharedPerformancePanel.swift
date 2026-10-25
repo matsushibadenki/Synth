@@ -9,6 +9,7 @@ struct SharedPerformancePanel<Header: View>: View {
     let status: String
     let recall: () -> Void
     let record: () -> Void
+    let loadPreset: (InstrumentPreset) -> Void
     let controls: [PanelControl]
     let switches: [Bool]
     let enabled: Bool
@@ -35,7 +36,7 @@ struct SharedPerformancePanel<Header: View>: View {
         }.fixedSize(horizontal:false,vertical:true).background(CabinetFinish()).overlay(CabinetRails())
     }
     private func programmer(splitKeys: Bool=false) -> some View {
-        ProgrammerPanel(file:$file,bank:$bank,program:$program,status:status,recall:recall,record:record,compact:true,splitKeys:splitKeys)
+        ProgrammerPanel(file:$file,bank:$bank,program:$program,status:status,recall:recall,record:record,loadPreset:loadPreset,compact:true,splitKeys:splitKeys)
     }
     private func keyboard(columns: Int) -> some View {
         SharedMetalKeyboard(layout:PanelLayout(columns:columns,keyboardOnly:true),controls:controls,switches:switches,

@@ -44,7 +44,7 @@ final class SynthEngine: ObservableObject {
         AUAudioUnit.registerSubclass(
             ProphetLikeAudioUnit.self,
             as: componentDescription,
-            name: "Local ProphetLike Generator",
+            name: "Local SYNTH/05 Generator",
             version: UInt32.max
         )
         _ = effects

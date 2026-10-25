@@ -33,6 +33,16 @@ The reference is the original CM1000D manual, section 2 and the 24-byte program 
 
 ## 実装 / Implementation / 实现
 
+- 🟢 [Done] 補正の聴き比べ用にピアノ／バイオリンのシンセ音色を追加。PROGRAMMERの読込アイコン（書類＋下矢印）から選べます。ピアノは速い打鍵と減衰、バイオリンは滑らかな立ち上がりと持続音。FINE=0、ノイズ／ユニゾンなしで読み込み、Pitch／ModホイールとA-440を中立化します。主音量とマスターチューンは維持。ユーザー音色枠は上書きせず、保存する場合だけ録音ボタンを使います。FX設定は維持するため、補正確認時はFXをOFFにしてください。これは減算合成による楽器風音色です。
+  Piano and Violin synth presets are available from PROGRAMMER's document/down-arrow recall menu. Piano tests attack/decay; Violin tests sustained stability. Recall uses FINE=0, no noise/unison, neutral wheels and A-440 off, preserving master volume/tuning. User slots are only written with Record. Bypass FX when comparing; these are subtractive synth interpretations.
+  从PROGRAMMER的文档下箭头菜单选择钢琴／小提琴合成音色。钢琴用于检查起音与衰减，小提琴用于检查持续音稳定性。FINE=0、关闭噪声／齐奏，轮控归零且A-440关闭，保留主音量与总调音。仅按保存按钮才写入用户音色位。比较时请关闭效果；音色采用减法合成。
+
+  [ピアノ / Piano / 钢琴](Previews/piano-preset.wav) · [バイオリン / Violin / 小提琴](Previews/violin-preset.wav) — FXなし、10.8秒／13.76秒。 / Dry, 10.8 / 13.76 seconds. / 干声10.8／13.76秒。
+
+- 🟢 [Done] FINE=0で長く伸ばした音の安定性を改善。同じボイス内のOSC A/Bで自然な音程変動・トラッキング誤差・Tune補正を共有し、微小な音程差が積み重なって生じる音量のうねりを抑えます。5ボイスは別々に緩やかに揺れ、フィルター／ADSR／VCAの個体差も維持します。FINEや変調、ユニゾンで意図的に生じるうなりは残ります。新しい操作項目や保存音色の書き換えはありません。
+  Improved long-note stability at FINE=0 by sharing incidental pitch drift, tracking error and Tune correction between A/B within each voice. Five voices retain separate slow motion and filter/envelope/VCA tolerances. Intentional Fine, modulation and unison beating remain; no added controls or saved-patch rewrites.
+  改善FINE=0时的长音稳定性：同一声部的A/B共享自然音高漂移、跟踪误差与Tune校正，避免微小频差累积造成音量起伏。五个声部仍各自缓慢漂移，保留滤波器／ADSR／VCA差异；FINE、调制和齐奏产生的拍频仍保留。不增加参数，也不改写已存音色。
+
 - 🟢 [Done] FXなしの単音で目立つ速いうなりを軽減。初期OSC B FINEを0セントにし、独立した音程揺れを小さく・ゆっくりに調整しました。遅い温度変動と自由走行する発振器は維持します。保存済み音色のFINEは変更しないため、既存音色ではOSC B FINEを0にして確認してください。意図的なデチューンによるうなりは残ります。
   Reduced rapid dry-note beating: neutral initial OSC B FINE, smaller/slower independent pitch wander, retained slow thermal motion and free-running phases. Saved patches retain their FINE value; set OSC B FINE to 0 when checking an existing patch. Intentional detuning still beats naturally.
   减轻干声单音的快速拍频：初始OSC B FINE设为0，减小并放慢独立音高漂移，保留缓慢温度变化与自由运行相位。已存音色的FINE不变，检查旧音色时请将OSC B FINE设为0；有意失谐仍会产生自然拍频。
@@ -181,3 +191,51 @@ Verified modes/tails/stereo/feedback/looper at three sample rates, graph contrac
 ⭕️ [Pending] iPhone実機の操作／負荷／音切れ検証と、参考実機との聴感・測定比較。 Physical iPhone interaction/load/dropout and hardware comparisons. iPhone实机交互／负载／断音测试及参考设备对比。
 
 参考にした公式資料： [Roland SBF-325](https://static.roland.com/manuals/sh-4d/jpn/50233808.html)、[Strymon TimeLine](https://www.strymon.net/support/timeline/)、[Strymon BigSky](https://www.strymon.net/get-know-bigsky-rabea-massaad-pt-3/)、[Line 6 DL4 MkII](https://line6.com/effects-pedals/dl4-mkii/)、[t.c. electronic 2290](https://www.tcelectronic.com/en/products/0815-aak)、[Moog MF-102 manual](https://api.moogmusic.com/sites/default/files/2018-06/MF_102_Ring_Modulator_Manual.pdf)。
+
+
+楽器プリセット検証・試聴の生成 / Instrument preset checks and demos / 乐器预设验证与试听：
+```sh
+cat Sources/SynthApp/Rev3Parameters.swift Sources/SynthApp/EffectsGraph.swift Sources/SynthApp/EffectsDSP.swift Sources/SynthApp/ProphetCore.swift Tests/Rev3Regression.swift Tests/InstrumentPresetsRegression.swift > /tmp/synth-instrument-presets.swift
+swiftc -O -module-cache-path /tmp/synth-clang-cache /tmp/synth-instrument-presets.swift -o /tmp/synth-instrument-presets
+/tmp/synth-instrument-presets Previews
+```
+
+## Extended expression / 音の表現拡張 / 声音表现扩展
+
+🟢 [Done] SYNTH上部のSYNTH/05 / Extendedで切り替え。初期状態はSYNTH/05。Extendedにはサイン波の1オクターブ下のサブ音源、独立したフィルター揺らぎ、オートパンと共通速度（0.05–8Hz）を追加。切り替えと各深度は4msで平滑化します。既存FXはどちらのモードでも独立して動作します。
+Switch above the SYNTH panel. SYNTH/05 is the default; Extended adds a sine sub one octave below the played pitch, independent filter motion, and auto pan with a shared 0.05–8Hz rate. Depths and bypass use 4ms smoothing. Existing FX remain independent in both modes.
+在SYNTH顶部切换，默认为SYNTH/05。Extended添加低一个八度的正弦波低音、独立滤波调制及自动声像，共用0.05–8Hz速率。深度和旁通采用4ms平滑处理，两种模式下原有效果均独立运行。
+
+🟢 [Done] 拡張設定とモードはアプリ共通で自動保存し、SYNTH/05への切り替え中も保持。既存の46項目の音色保存・呼び出し・楽器プリセットはそのまま利用可能です。拡張値は音色スロットには含みません。
+Extension settings and mode save globally and survive bypass. The original 46-setting programs and instrument presets retain their schema; extension settings are outside program slots.
+扩展参数与模式全局自动保存，旁通时保留。原有46项音色及乐器预设格式保持不变，音色槽不包含扩展参数。
+
+⭕️ [Pending] iPhone実機での新パネルのレイアウト、操作、負荷と聴感の確認。
+New panel layout, interaction, load and listening checks on physical iPhones remain pending.
+iPhone实机新面板布局、交互、性能与听感验证待完成。
+
+```sh
+cat Sources/SynthApp/Rev3Parameters.swift Sources/SynthApp/EffectsGraph.swift Sources/SynthApp/EffectsDSP.swift Sources/SynthApp/ProphetCore.swift Tests/Rev3Regression.swift Tests/ExpressionRegression.swift > /tmp/synth-expression-test.swift
+swiftc -O -module-cache-path /tmp/synth-clang-cache /tmp/synth-expression-test.swift -o /tmp/synth-expression-test
+/tmp/synth-expression-test
+```
+
+### Ladder color / ラダー系の音作り / 梯形滤波音色
+
+🟢 [Done] ExtendedにLADDER（既存フィルターとの混合）、DRIVE（入力と出力の飽和）、FEEDBACK（各ボイスの4段目の出力を入力へ戻す量）、6／12／18／24dB/octの傾き切り替えを追加。既存のカットオフ、レゾナンス、フィルターEGと連動し、5音ポリフォニーを維持。LADDERを上げて使用します。初期値はLADDER／DRIVE／FEEDBACKすべて0。SYNTH/05で追加処理をバイパスし、設定は保持します。
+Extended adds LADDER blend, DRIVE saturation, FEEDBACK from each voice's fourth filter stage, and 6/12/18/24dB/oct slopes. Raise LADDER to use the color path. Existing cutoff, resonance and filter envelope control both paths; five-voice polyphony remains. All three new knobs default to zero. SYNTH/05 bypasses the additions and retains settings.
+Extended新增LADDER混合、DRIVE饱和、每个声部第四级输出的FEEDBACK反馈，以及6/12/18/24dB/oct斜率。提高LADDER即可使用。截止频率、共振和滤波包络共用，保留五音复音。三个新旋钮默认为0，SYNTH/05旁通新增处理并保留参数。
+
+🟢 [Done] 新パラメーターは既存の拡張設定へ保存。旧形式の拡張設定は新項目を初期値で補完して読み込みます。既存の46項目の音色スロット形式は維持。音声処理は既存のオーバーサンプリング内で実行し、切り替え・深度・傾きを平滑化します。
+Color settings save with expression settings, with defaults supplied when decoding older data. The original 46-setting voice schema is unchanged. The color path runs inside existing oversampling with smoothed controls.
+新参数随扩展设置保存，旧数据缺少的新项按默认值补全。原有46项音色格式保持不变，滤波在现有过采样内运行并平滑控制变化。
+
+🟢 [Done] 44.1／48／96kHzで全傾き、最大共振・歪み・フィードバック、ステレオ出力、SYNTH/05バイパス、旧設定の移行と既存音源の回帰テストを検証。アプリのビルドと288／343／398／1000pt幅のパネル描画を確認。
+Verified slopes, maximum resonance/drive/feedback, stereo output, bypass, migration and existing audio regressions at three sample rates; built the app and inspected panel renders at four widths.
+已验证三种采样率的斜率、最大共振／驱动／反馈、立体声输出、旁通、旧设置迁移及现有音源回归，完成应用构建与四种宽度的面板检查。
+
+⭕️ [Pending] iPhone実機での負荷・操作・聴感、および参考実機との比較。
+Physical iPhone performance, interaction, listening and reference hardware comparisons remain pending.
+iPhone实机性能、交互、听感及参考硬件对比待验证。
+
+参考 / Reference / 参考：[Moog Subsequent 37 official manual](https://api.moogmusic.com/sites/default/files/2017-09/Subsequent_37_Manual_0.pdf)。機能構成を参考にした独自DSPで、実機の回路・音響特性の完全再現ではありません。Original inspired DSP, not a circuit-accurate hardware emulation. 参考功能设计的独立DSP，并非硬件电路精确仿真。

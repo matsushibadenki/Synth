@@ -141,7 +141,7 @@ struct EffectsPatchView: View {
     private func point(_ node: FXNode,output: Bool,port: String="out") -> CGPoint {
         CGPoint(x:node.x+(output ? Double(cardWidth-12):12)+(moving == node.id ? offset.width:0),y:node.y+(port == "b" ? 112:80)+(moving == node.id ? offset.height:0))
     }
-    private func shortName(_ kind: EffectKind) -> String { ["SYNTH / 05","DIMENSION","SKY","TIME","ECHO PEDAL","RING / 102","STUDIO","MIX / A + B","STEREO OUT"][kind.rawValue] }
+    private func shortName(_ kind: EffectKind) -> String { ["SYNTH/05","DIMENSION","SKY","TIME","ECHO PEDAL","RING / 102","STUDIO","MIX / A + B","STEREO OUT"][kind.rawValue] }
     private var instructions: String {
         fxText("Select an output port, then an input port. Remove cables from the input's context menu or cable list. Drag node headers to move. MIX A/B combines parallel branches; disconnected inputs are silent. Edits and settings are saved automatically.","出力ポート→入力ポートの順に選択して接続。入力の右クリック／長押し、またはケーブル一覧から切断できます。見出しをドラッグして移動。MIX A/Bで並列経路を合流します。未接続の入力は無音です。編集と設定は自動保存されます。","依次选择输出、输入端口连接。右键或长按输入端口，或从连线列表断开。拖动标题移动节点。MIX A/B合并并行路径，未连接输入为静音。编辑和设置自动保存。")
     }
