@@ -1,0 +1,5 @@
+# Reproducible SwiftPM build products and caches
+/.build/
+
+# macOS Finder metadata
+.DS_Store
