@@ -22,6 +22,16 @@ Budget: 5.333ms per block. Every wall overrun had thread CPU time within that bu
 
 `pilot.json` retains the preliminary inherited-QoS experiment, where both inherited and explicit interactive QoS were actually 33. Its labels are historical, not evidence of different QoS conditions. The verified comparison is `matched.json` (Default 21 versus User Interactive 33).
 
+## UI/GPU and FX routing / UI・GPU・FX経路 / UI・GPU・效果路由
+
+🟢 [Done] Added `--fx-routing` to the existing opt-in UI/GPU probe. Three validated plans (all FX enabled, bypass, reverse effect order) are compiled before audio starts and switched from the main thread every 120 control ticks. This exercises existing production graph publication and render-plan transitions without adding work to production builds.
+
+180秒の実出力負荷試験で、96kHz／512フレーム、33,750コールバック、5,407回のMetalプレビュー、10,800回の可視UI更新、45回の画面幅変更、90回のFX設定／経路変更を確認。DSP実経過時間超過・CPU予算超過・タイムスタンプ不連続はすべて0。最大DSP実経過時間2.905ms／予算5.333ms。この試験に比較対象となる変更前の180秒測定はなく、速度改善の数値ではありません。
+
+The 180-second run completed 33,750 callbacks at 96kHz/512 frames, 5,407 Metal previews, 10,800 visible UI ticks, 45 resizes and 90 FX configuration/routing switches. AU wall/CPU overruns and sample-timestamp gaps were all zero. Maximum kernel wall time was 2.905ms against a 5.333ms budget. This is a validation result, not a before/after speed comparison. Source DSP, product UI and SYNTH/05 branding were unchanged.
+
+180秒测试完成33,750次回调、5,407次Metal预览、10,800次可见UI更新、45次窗口宽度变化与90次效果配置／路由切换。音源实际耗时超时、CPU预算超时、采样时间戳断续均为0。最大音源耗时2.905ms，预算5.333ms。这是验证结果，不是优化前后速度比较；产品音源、UI和SYNTH/05名称未变。
+
 ## Reproduction / 再実行 / 重现
 
 Run on macOS with a working output device; no system audio settings are changed. Compile before running and do not run builds or other benchmarks alongside measurements.

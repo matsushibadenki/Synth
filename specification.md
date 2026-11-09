@@ -311,3 +311,25 @@ Data / 測定記録 / 测量记录: [summary and raw paired runs](docs/performan
 
 🟠 [Next] Matched-rate/block offline versus output-thread comparisons, longer runs and FX routing changes; mixed LFO/noise correction weighting.
 ⭕️ [Pending] Physical iPhone load/dropout/interaction and matched hardware sound calibration.
+
+
+## 同条件期限超過検証 / Matched deadline isolation / 同条件超时验证（2026-11-09）
+
+🟢 [Done] 実出力のサンプルレートと全ブロック列を保存し、同じ固定音色・FXを新しいAUで再生する `Tests/MatchedDeadlineProbe.swift` を追加。20ブロックのウォームアップを除外し、Default／User Interactiveの実QoSを検証して交互に実行します。96kHz／512フレーム、各5,605ブロックで実出力の期限超過0、オフラインはDefaultで17／17、User Interactiveで0／7。CPU予算超過は全条件0でした。スケジューリング等の非CPU時間を含む超過で、QoSだけでは解消しません。原因の単一特定や本体の改善完了は意味しません。
+
+Added exact output-frame-sequence replay with fresh, identical AU state and verified diagnostic QoS. At 96kHz/512 frames, each condition measured 5,605 callbacks: output wall overruns 0; offline Default 17/17 and User Interactive 0/7; CPU overruns zero throughout. This isolates a non-CPU elapsed-time component without proving one root cause or a production fix. Production scheduling is unchanged.
+
+新增实际输出帧序列重放，使用相同初始AU状态并验证诊断QoS。在96kHz／512帧下，每次测量5,605个回调：实际输出超时0，离线Default为17／17，User Interactive为0／7，CPU预算超时全部为0。这说明超时包含非CPU耗时，但尚未确定唯一原因或完成生产修复；生产调度保持不变。
+
+🟢 [Done] UI／GPU試験に事前コンパイル済みFX設定／接続順切替を追加。180秒、96kHz、33,750コールバック、5,407描画、90回のFX切替、45回の幅変更でDSP期限超過・CPU予算超過・タイムスタンプ不連続0。UIとSYNTH/05表記、音源、音色保存形式は変更なし。
+
+Added precompiled FX bypass/routing transitions to the UI/GPU probe. The 180-second run completed 33,750 callbacks, 5,407 previews, 90 FX switches and 45 resizes with zero kernel wall/CPU overruns or timestamp gaps. UI, SYNTH/05 branding, DSP and saved programs are unchanged.
+
+UI／GPU测试新增预编译效果旁路／路由切换。180秒完成33,750次回调、5,407次预览、90次效果切换及45次宽度变化，音源实际耗时／CPU超时与时间戳断续均为0，UI、名称、音源和保存格式未变。
+
+Scope / 条件 / 范围: muted AU-kernel timing excludes downstream mixer/driver and audible dropout detection. Offline replay is unpaced; frequency, temperature and run-order effects are not isolated. No universal stability or speedup claim. Pilot observations are retained separately, including identical actual QoS despite different requested profiles.
+
+[測定条件・再実行手順 / Conditions and reproduction / 条件与重现](docs/performance/deadline-isolation-2026-11-09/README.md)
+
+🟠 [Next] Paced/unpaced comparisons and finer non-CPU attribution; mixed LFO/noise correction weighting; nonzero-signal FX transition sound-quality tests.
+⭕️ [Pending] Physical iPhone interaction/load/dropouts and matched hardware calibration.

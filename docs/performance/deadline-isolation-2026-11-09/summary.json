@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-09",
+  "matched_report": "matched.json",
+  "pilot_report": "pilot.json",
+  "ui_gpu_routing_report": "ui-gpu-routing.json",
+  "matched_sample_rate": 96000,
+  "matched_frames": 512,
+  "matched_timed_callbacks_per_run": 5605,
+  "offline_default_wall_overruns": [
+    17,
+    17
+  ],
+  "offline_interactive_wall_overruns": [
+    0,
+    7
+  ],
+  "all_matched_cpu_overruns": 0,
+  "device_wall_overruns": 0,
+  "loaded_seconds": 180,
+  "loaded_callbacks": 33750,
+  "fx_route_changes": 90,
+  "loaded_wall_overruns": 0,
+  "loaded_cpu_overruns": 0,
+  "loaded_sample_timestamp_gaps": 0,
+  "conclusion": "Matched offline overruns contain non-CPU elapsed time; QoS alone is insufficient. No output kernel overrun reproduced. No production DSP, UI, persistence or scheduling change. See README for scope and limitations."
+}
