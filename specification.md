@@ -49,7 +49,7 @@ New keys: `synth.rev3.v1.<file>.<bank>.<program>`. Legacy keys `synth.preset.A/B
 
 🟢 [Done] One shared definition drives the 26 knobs, 22 switches, localized native editor and stored programs. Metal meshes, label positions and hit areas share their layout math. One/two/three columns preserve narrow-screen layout. Outer horizontal padding is 16pt and only the background ignores safe areas.
 
-🟢 [Done] Voice-count/schema regression, program round trip, independent waveforms, velocity independence, low-note unison, release switch, wheel pink noise, Poly-Mod PWM and reference-tone tests. Existing filter stress tests run at 44.1/48/96kHz. Metal tests cover five widths.
+🟢 [Done] Voice-count/schema regression, program round trip, independent waveforms, MIDI velocity gain, low-note unison, release switch, wheel pink noise, Poly-Mod PWM and reference-tone tests. Existing filter stress tests run at 44.1/48/96kHz. Metal tests cover five widths.
 
 🟠 [Next] Reduce residual aliasing at extreme sync/audio-rate modulation depths; profile on physical iPhones.
 
@@ -333,3 +333,84 @@ Scope / 条件 / 范围: muted AU-kernel timing excludes downstream mixer/driver
 
 🟠 [Next] Paced/unpaced comparisons and finer non-CPU attribution; mixed LFO/noise correction weighting; nonzero-signal FX transition sound-quality tests.
 ⭕️ [Pending] Physical iPhone interaction/load/dropouts and matched hardware calibration.
+
+
+## MIDI入力 / MIDI input / MIDI输入
+
+🟢 [Done] 電源ONでCoreMIDI入力を自動接続し、起動後の接続・切断にも追従します。USB／システムに登録済みのMIDI入力は全チャンネルを共通の5ボイス音源へ受信。DAWの送信先には仮想入力 **SYNTH/05** を選べます。接続数とエラーは既存のInfoアイコン内に表示します。OS側でのBluetooth／ネットワークMIDI接続設定画面は追加していません。
+
+Power on to automatically connect CoreMIDI sources, including sources added later. All channels feed the same five-voice instrument. A virtual **SYNTH/05** destination accepts DAW MIDI; the existing Info popover shows source count/errors. Bluetooth/network sessions must already be established through the system; there is no pairing UI.
+
+开机后自动连接CoreMIDI输入并跟随设备接入／移除，所有通道共用五声部音源。DAW可选择虚拟目标 **SYNTH/05**，现有Info中显示输入数量／错误。蓝牙及网络MIDI需先通过系统建立连接，本应用不提供配对界面。
+
+| MIDI | 動作 / Action / 行为 |
+| --- | --- |
+| Note On / Off | 発音／離鍵。Velocity 0はNote Off。/ Play/release; velocity zero is Note Off. / 发音／松键，力度0作为Note Off。 |
+| CC64 | チャンネル別サステイン / Per-channel sustain / 按通道延音 |
+| Pitch Bend | 既存Pitchホイール、±7半音 / Existing wheel, ±7 semitones / 现有弯音轮，±7半音 |
+| CC1 | 既存Modホイール / Existing Mod wheel / 现有调制轮 |
+| CC121 | サステイン解除、操作元のPitch／Modを初期化 / Release sustain and reset owned wheels / 释放延音并重置该输入控制的轮控 |
+| CC123 | 全離鍵（サステインを尊重） / All notes off, respecting sustain / 全部松键，遵循延音 |
+| CC120 | サステインを破棄して離鍵（EGのReleaseは維持） / Clear sustain and release, retaining envelope release / 清除延音并松键，保留包络释音 |
+
+同音は入力元／チャンネルごとに保持し、最後の入力が離すまで継続します。画面鍵盤とも独立して保持。入力削除・電源OFF・音色プリセット呼出時は保持状態をクリアし、切断元が操作したPitch／Modは中立へ戻します。入力イベントは既存の固定容量ノートキューへ渡し、音声コールバックにはMIDIの解析・接続管理を追加しません。操作面、SYNTH/05表記、音色形式は維持しています。
+
+Notes are owned per source/channel and independently from the on-screen keyboard. Removed sources release their notes and reset their owned wheels. Power off/preset recall clears held state. Parsing and connection management stay outside the audio callback; notes use the existing bounded queue. The UI, branding and program format remain intact.
+
+同音按输入源／通道独立保持，并与屏幕键盘分开；最后一个输入释放后才松键。移除输入会释放其音符并归零其控制的轮控，关机／预设调用会清除保持状态。解析与连接管理不进入音频回调，音符使用已有固定容量队列。保持UI、名称及保存格式。
+
+MIDIベロシティ1〜127をボイス音量へ線形に反映します（最大値は従来と同じ音量）。画面鍵盤の標準発音も従来の音量を維持します。Pitch／Modは共通パラメーターです。MPE、MIDI Learn、プログラムチェンジ、タイムスタンプに基づくサンプル精度の予約演奏は対象外です。
+
+MIDI velocities 1–127 linearly scale voice gain; maximum velocity and default on-screen playing preserve the previous level. Pitch/Mod are global. MPE, MIDI Learn, program changes and sample-accurate timestamp scheduling are not implemented.
+
+MIDI力度1–127线性控制声部音量，最大力度及屏幕键盘默认音量与原先一致。弯音／调制为全局参数；未实现MPE、MIDI Learn、程序切换及按时间戳进行采样精度调度。
+
+🟢 [Done] バイト解析／演奏状態回帰、CoreMIDI仮想入力ループバック（複数・長いパケット、接続／切断、DAW宛先、停止／再開）、AUオフラインでの画面鍵盤との同音保持・離鍵・輪控反映、アプリ全体ビルドを確認。
+
+Parser/state, virtual CoreMIDI hotplug/packet/destination/restart tests, offline AU note ownership/releases/wheel publication and full app compilation passed. Tests: `Tests/MIDIRegression.swift`, `Tests/MIDILoopbackRegression.swift`, `Tests/MIDIEngineRegression.swift`.
+
+已通过字节解析／演奏状态、虚拟CoreMIDI连接／数据包／目标／重启、离线AU音符保持／松键／轮控及完整应用构建验证。
+
+⭕️ [Pending] 実機USB／Bluetooth MIDI、外部DAWとiPhone実機での演奏・遅延・抜き差し検証。
+Physical USB/Bluetooth controllers, external DAWs and physical iPhone playing/latency/hotplug verification.
+实体USB／蓝牙控制器、外部DAW与iPhone实机演奏／延迟／插拔验证。
+
+
+## MIDIベロシティ / MIDI velocity / MIDI力度（2026-11-09）
+
+🟢 [Done] 固定容量のノートイベントにベロシティを保持し、各ボイスのフィルター／VCA後、デシメーション／FX前の音量に適用。MIDI 1〜127を1/127〜1へ線形変換し、0はNote Offとして処理します。強度でフィルターやEG時間は変えません。発音中のボイスの再利用・ユニゾン遷移は1ms時定数で強度を平滑化し、新規の発音は最初から指定強度を使用します。FXの非線形処理によって最終出力の音量比は変わる場合があります。
+
+The bounded note queue now carries velocity into a per-voice gain after filtering/VCA and before decimation/FX. MIDI 1–127 maps linearly to 1/127–1; zero releases the note. Filter settings and envelope times stay unchanged. Reused active voices slew gain with a 1ms time constant; fresh attacks start at their requested gain. Nonlinear FX can change final output ratios.
+
+固定容量音符队列现携带力度，在滤波／VCA之后、降采样／效果之前控制每个声部音量。MIDI 1–127线性映射至1/127–1，0作为松键。滤波设置和包络时间不变。复用活动声部时以1ms时间常数平滑力度，新发音直接使用指定力度；非线性效果可能改变最终音量比例。
+
+🟢 [Done] 128音の固定配列に打鍵強度を保持し、ユニゾンの低音優先・元の保持音への復帰・再打鍵・モード変更へ反映。画面鍵盤はベロシティ1を使用し、以前の固定強度と同じ音量を維持。UI、SYNTH/05表記、46項目の保存音色形式に変更はありません。
+
+A fixed 128-key velocity table preserves unison low-note priority/fallback, repeated attacks and mode changes. Default screen-keyboard events use velocity 1 to retain the former fixed level. UI, SYNTH/05 branding and the 46-setting program schema remain unchanged.
+
+固定128音符力度表用于齐奏低音优先、返回保持音、重复打键与模式切换。屏幕键盘默认力度1，保持此前固定音量。UI、SYNTH/05名称及46项音色保存格式不变。
+
+🟢 [Done] `Tests/VelocityRegression.swift` checks monotonic MIDI 1/32/64/127 dry output and linear gain at 44.1/48/96kHz, poly/unison, zero release, unison fallback/retrigger/mode transitions, reused-voice smoothing, finite/clamped input and voice stealing. Twelve maximum-velocity before/after render fingerprints match exactly. Full app build and existing audio/analog regressions verify the integrated change.
+
+⭕️ [Pending] Physical USB/Bluetooth controllers and iPhone velocity-response/listening checks. Automated velocity tests render offline and do not validate live MIDI latency or physical key feel.
+実機USB／BluetoothコントローラーとiPhoneでの強度応答・試聴は保留。自動試験はオフラインで、実入力の遅延や打鍵感は未検証です。
+实体USB／蓝牙控制器及iPhone力度响应／试听待验证。自动测试为离线渲染，不代表实时输入延迟或实体键盘手感验证。
+
+
+## AUv3とUNGEノード表現 / AUv3 and UNGE node presentation / AUv3与UNGE节点表现（2026-11-09）
+
+🟢 [Done] macOS／iOS用AUv3ターゲット、埋込アプリ、独立した音源／FX状態、MIDIイベント位置の処理、50パラメーター、ホスト保存・復元、リセット時のノート／FX履歴消去を追加。詳細と制約は[Audio Unit documentation](docs/audio-unit/README.md)を参照。
+
+AUv3 targets and containing apps include independent state, event-offset MIDI, 50 parameters, host state and reset handling. The standalone instrument remains available. macOS/iOS Simulator builds, Apple auval and out-of-process custom-UI/render tests verify development-host behavior.
+
+AUv3目标及父应用包含独立状态、按事件位置处理MIDI、50项参数、宿主保存与重置。保留独立乐器应用，已进行macOS／iOS模拟器构建、auval及独立进程自定义UI／渲染验证。
+
+🟢 [Done] UNGEの `scene.rs`／`theme.rs` を参考に、ノードに色付きヘッダー、役割アイコン、選択枠・ハロー、同心円の端子、接続元と対応するケーブル色、静的な処理シンボル、主パラメーター表示を追加。ドラッグ中も端子とケーブルが同じ座標を使用。モデル／DSP／保存済み配置は変更せず、SwiftUI／Canvasで描画します。320／430／1100pt幅のネイティブ描画を確認し、SE第3世代と16 Pro MaxのPreviewも追加しました。MITの出典を `Vendor/UNGE` に保持しています。
+
+UNGE-inspired node headers, role badges, selection halos, ring/core ports, source-colored cables, static processing glyphs and primary parameter values reuse native SwiftUI/Canvas. Cable and port anchors stay aligned while dragging. Graph/DSP/storage and saved positions are unchanged. Native screenshots cover 320/430/1100pt; device previews cover SE3 and 16 Pro Max. The MIT reference is preserved in Vendor/UNGE. Glyphs are not level meters.
+
+参考UNGE新增彩色标题、角色图标、选中光环、环形端口、按源节点配色的连线、静态处理图形与主参数值。拖动时连线／端口共用锚点。图模型、DSP及已存位置不变，使用原生SwiftUI／Canvas绘制。验证320／430／1100pt宽度，提供SE3及16 Pro Max预览，并保留MIT来源。图形不是电平表。
+
+🟢 [Done] `.gitignore` covers SwiftPM/Xcode build products, AU bundles, archives and per-user state while retaining sources, shared schemes, project definitions, plist/entitlements and audio preview assets. Ignore rules do not automatically untrack previously committed files.
+
+⭕️ [Pending] Commercial DAW/physical iOS playback and session workflows; physical iPhone patch-canvas interaction and combined AU/UI/GPU endurance. Existing deadline investigation remains open; these UI/build changes do not establish a scheduling fix.

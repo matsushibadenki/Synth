@@ -5,6 +5,15 @@ import SwiftUI
         let name="local.synth.fx.regression.\(UUID().uuidString)"
         let store=UserDefaults(suiteName:name)!
         defer { store.removePersistentDomain(forName:name) }
+        let hostedShared=SharedEffects()
+        var hostedDoc=FXDocument.initial;hostedDoc.nodes[2].settings.enabled=true
+        hostedShared.set(try hostedDoc.configuration(),document:hostedDoc)
+        let hosted=EffectsController(shared:hostedShared,storage:store,persistent:false)
+        precondition(hosted.document==hostedDoc,"AU UI must preserve restored host FX state")
+        hosted.update(.time) { $0.enabled=true }
+        precondition(store.data(forKey:"synth.effects.document.v1")==nil,"AU edits must not write standalone FX defaults")
+        hostedShared.set(try hostedDoc.configuration(),document:hostedDoc)
+        hosted.refreshHostedDocument();precondition(hosted.document==hostedDoc)
         let shared=SharedEffects(), rack=EffectsController(shared:SharedEffects(),storage:store)
         rack.update(.sky) { $0.enabled=true; $0.mode=2; $0.values[0]=0.8 }
         rack.parallel()

@@ -1,0 +1,133 @@
+name: Synth05
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    macOS: '13.0'
+    iOS: '17.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    SWIFT_OPTIMIZATION_LEVEL: -O
+    MARKETING_VERSION: '1.0'
+    CURRENT_PROJECT_VERSION: 1
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_HARDENED_RUNTIME: YES
+    PRODUCT_NAME: SYNTH05
+    INFOPLIST_KEY_CFBundleDisplayName: SYNTH/05
+    CLANG_ENABLE_MODULES: YES
+targets:
+  Synth05-macOS:
+    type: application
+    platform: macOS
+    sources: [Sources/SynthApp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.synth05.Synth
+    info:
+      path: AudioUnit/App-macOS-Info.plist
+      properties:
+        CFBundleDisplayName: SYNTH/05
+        LSApplicationCategoryType: public.app-category.music
+        NSHighResolutionCapable: true
+    entitlements:
+      path: AudioUnit/App-macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    dependencies:
+      - target: Synth05AU-macOS
+        embed: true
+  Synth05AU-macOS:
+    type: app-extension
+    platform: macOS
+    sources: [Sources/SynthApp, Sources/SynthAudioUnit]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.synth05.Synth.AudioUnit
+        PRODUCT_NAME: SYNTH05AudioUnit
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: '$(inherited) SYNTH_AUDIO_UNIT'
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: AudioUnit/Extension-macOS-Info.plist
+      properties:
+        CFBundleDisplayName: SYNTH/05
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.AudioUnit-UI
+          NSExtensionPrincipalClass: Synth05AudioUnitViewController
+          NSExtensionAttributes:
+            AudioComponents:
+              - name: 'SYNTH/05: SYNTH/05'
+                description: SYNTH/05
+                factoryFunction: Synth05AudioUnitViewController
+                manufacturer: Sy05
+                subtype: S05a
+                type: aumu
+                version: 65536
+                sandboxSafe: true
+                tags: [Synthesizer]
+    entitlements:
+      path: AudioUnit/Extension-macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+  Synth05-iOS:
+    type: application
+    platform: iOS
+    sources: [Sources/SynthApp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.synth05.Synth
+        TARGETED_DEVICE_FAMILY: '1,2'
+    info:
+      path: AudioUnit/App-iOS-Info.plist
+      properties:
+        CFBundleDisplayName: SYNTH/05
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    dependencies:
+      - target: Synth05AU-iOS
+        embed: true
+  Synth05AU-iOS:
+    type: app-extension
+    platform: iOS
+    sources: [Sources/SynthApp, Sources/SynthAudioUnit]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.synth05.Synth.AudioUnit
+        PRODUCT_NAME: SYNTH05AudioUnit
+        TARGETED_DEVICE_FAMILY: '1,2'
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: '$(inherited) SYNTH_AUDIO_UNIT'
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: AudioUnit/Extension-iOS-Info.plist
+      properties:
+        CFBundleDisplayName: SYNTH/05
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.AudioUnit-UI
+          NSExtensionPrincipalClass: Synth05AudioUnitViewController
+          NSExtensionAttributes:
+            AudioComponents:
+              - name: 'SYNTH/05: SYNTH/05'
+                description: SYNTH/05
+                factoryFunction: Synth05AudioUnitViewController
+                manufacturer: Sy05
+                subtype: S05a
+                type: aumu
+                version: 65536
+                sandboxSafe: true
+                tags: [Synthesizer]
+schemes:
+  SYNTH05-macOS:
+    build:
+      targets:
+        Synth05-macOS: all
+    run:
+      config: Debug
+  SYNTH05-iOS:
+    build:
+      targets:
+        Synth05-iOS: all
+    run:
+      config: Debug

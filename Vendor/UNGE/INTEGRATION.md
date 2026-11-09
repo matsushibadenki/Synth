@@ -11,3 +11,5 @@ UNGE does not contain these audio effects. `EffectsDSP.swift` implements indepen
 日本語：UNGEのモデル／命令コードをSwiftへ移植した限定的なネイティブアダプターです。Rustの原本は変更せずライセンスとともに保存しています。非同期実行器・Tauri・wgpu全体の取り込みではありません。音声DSPは新規実装で、シンセ本体の46項目とは独立して保存します。
 
 简体中文：这是将UNGE模型与命令代码移植到Swift的原生适配器。保留未修改的Rust源代码及许可证，不包含异步执行器、Tauri或wgpu整体集成。音频DSP为独立新实现，存储与合成器的46个参数分离。
+
+Node presentation now also references upstream `unge-render` scene/theme sources. See [ADAPTATION.md](ADAPTATION.md) for provenance and native presentation scope.

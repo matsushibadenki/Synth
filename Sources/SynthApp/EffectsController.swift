@@ -10,17 +10,18 @@ final class EffectsController: ObservableObject {
     private var lastTap: Date?
     private var presets: [FXSettings]
     private let storage: UserDefaults
+    private let persistent: Bool
     var document: FXDocument { editor.document }
     var canUndo: Bool { editor.canUndo }; var canRedo: Bool { editor.canRedo }
-    init(shared: SharedEffects, storage: UserDefaults = .standard) {
-        self.shared=shared; self.storage=storage
-        var saved=storage.data(forKey:"synth.effects.document.v1").flatMap { try? JSONDecoder().decode(FXDocument.self,from:$0) }
+    init(shared: SharedEffects, storage: UserDefaults = .standard, persistent: Bool = true) {
+        self.shared=shared; self.storage=storage;self.persistent=persistent
+        var saved=persistent ? storage.data(forKey:"synth.effects.document.v1").flatMap { try? JSONDecoder().decode(FXDocument.self,from:$0) }:shared.documentSnapshot()
         if let i=saved?.nodes.firstIndex(where:{$0.kind == .pedal}) { saved?.nodes[i].settings.loopAction=0; saved?.nodes[i].settings.loopSerial=0 }
         editor=(saved.flatMap { try? FXEditor($0) }) ?? (try! FXEditor(.initial))
         let fallback=(0..<3).map { mode -> FXSettings in
             var state=FXSettings(.pedal); state.mode=mode; state.enabled=true; return state
         }
-        let savedPresets=storage.data(forKey:"synth.effects.pedal.presets.v1").flatMap { try? JSONDecoder().decode([FXSettings].self,from:$0) }
+        let savedPresets=persistent ? storage.data(forKey:"synth.effects.pedal.presets.v1").flatMap { try? JSONDecoder().decode([FXSettings].self,from:$0) }:nil
         presets=(savedPresets?.count == 3 && savedPresets!.allSatisfy { state in
             var doc=FXDocument.initial; doc.nodes[4].settings=state; return (try? doc.validate()) != nil
         }) ? savedPresets!:fallback
@@ -69,13 +70,18 @@ final class EffectsController: ObservableObject {
     }
     func storePedal(_ index: Int) {
         presets[index]=settings(.pedal)
-        if let data=try? JSONEncoder().encode(presets) { storage.set(data,forKey:"synth.effects.pedal.presets.v1") }
+        if persistent, let data=try? JSONEncoder().encode(presets) { storage.set(data,forKey:"synth.effects.pedal.presets.v1") }
     }
     func refreshTelemetry() { let result=shared.readLoop(); loopState=result.0; loopSeconds=result.1 }
+    func refreshHostedDocument() {
+        let next=shared.documentSnapshot()
+        guard next != document,let editor=try? FXEditor(next) else { return }
+        self.editor=editor;objectWillChange.send()
+    }
     private func publish(save: Bool=true) {
         objectWillChange.send()
-        if let config=try? document.configuration() { shared.set(config) }
-        if save, let data=try? JSONEncoder().encode(document) { storage.set(data,forKey:"synth.effects.document.v1") }
+        if let config=try? document.configuration() { shared.set(config,document:document) }
+        if save && persistent, let data=try? JSONEncoder().encode(document) { storage.set(data,forKey:"synth.effects.document.v1") }
     }
     private func message(_ error: Error) -> String {
         switch error as? FXGraphError {

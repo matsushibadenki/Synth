@@ -226,12 +226,16 @@ final class SharedEffects {
     private let lock=NSLock()
     private var configuration=try! FXDocument.initial.configuration()
     private var loopState=0, loopSeconds: Float=0
-    func set(_ next: FXRenderConfiguration) {
+    private var document=FXDocument.initial
+    func documentSnapshot() -> FXDocument { lock.lock();defer { lock.unlock() };return document }
+    func set(_ next: FXRenderConfiguration, document: FXDocument? = nil) {
         lock.lock()
         var next=next
         next.settings[4].loopSerial=configuration.settings[4].loopSerial
         next.settings[4].loopAction=configuration.settings[4].loopAction
-        configuration=next; lock.unlock()
+        configuration=next
+        if let document { self.document=document }
+        lock.unlock()
     }
     func sendLoop(_ action: Int) {
         lock.lock(); configuration.settings[4].loopSerial &+= 1

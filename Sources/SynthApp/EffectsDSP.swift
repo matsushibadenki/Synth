@@ -67,6 +67,9 @@ final class FXStereoLine {
         return samples[index]*(1-fraction)+samples[(index+1)%samples.count]*fraction
     }
     func write(_ value: SIMD2<Float>) { samples[cursor]=value; cursor=(cursor+1)%samples.count }
+    func reset() {
+        for i in samples.indices { samples[i] = .zero };cursor=0
+    }
 }
 
 /// Fixed 4x polyphase interpolation / FIR decimation around the nonlinear ring.
@@ -87,6 +90,11 @@ final class FXRingOversampler {
             taps[i]=Float(sinc*window); sum += taps[i]
         }
         for i in taps.indices { taps[i] /= sum }
+    }
+    func reset() {
+        for i in input.indices { input[i] = .zero }
+        for i in output.indices { output[i] = .zero }
+        inputCursor=0;outputCursor=0
     }
     var alignedDry: SIMD2<Float> { input[(inputCursor-Self.latency)&31] }
     func process(_ sample: SIMD2<Float>,carrier: inout Float,step: Float,drive: Float) -> SIMD2<Float> {
@@ -150,6 +158,17 @@ final class FXProcessor {
         predelay=FXStereoLine(capacity:Int(sampleRate*0.21)+8)
         if kind == .sky { tanks=(0..<8).map { _ in FXStereoLine(capacity:Int(sampleRate*0.25)+8) } }
         if kind == .pedal { loop=Array(repeating:.zero,count:Int(sampleRate*12)) }
+    }
+    func reset() {
+        delay.reset();pitch.reset();predelay.reset();ringOversampler?.reset()
+        for tank in tanks { tank.reset() }
+        for i in tankFilters.indices { tankFilters[i] = .zero }
+        phase=0;carrier=0;pitchPhase=0;reversePhase=0
+        filtered = .zero;previous = .zero;previousReverseRead = .zero
+        previousReversePhase=SIMD2(repeating:-1);lastEchoDelay=nil
+        wetGain=0;envelope=0;smooth=target
+        delaySamples=25*powf(80,target[0])*0.001*sr
+        loopPosition=0;loopLength=0;loopState=0;lastLoopSerial=settings.loopSerial
     }
     func configure(_ next: FXSettings) {
         if kind == .pedal, next.loopSerial != lastLoopSerial {
@@ -343,6 +362,11 @@ final class EffectsRackDSP {
     init(sampleRate: Float) {
         self.sampleRate=sampleRate
         processors=EffectKind.allCases.map { (1...6).contains($0.rawValue) ? FXProcessor(kind:$0,sampleRate:sampleRate):nil }
+    }
+    func reset() {
+        for processor in processors { processor?.reset() }
+        for i in values.indices { values[i] = .zero }
+        previous = .zero;transition=1
     }
     func prepare(_ next: FXRenderConfiguration) {
         if configuration.steps != next.steps { transition=0 }

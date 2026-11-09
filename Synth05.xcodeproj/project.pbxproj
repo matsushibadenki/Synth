@@ -1,0 +1,785 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04A376B1E8A881D9A98F7826 /* MasterVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */; };
+		05AFAE1BD20FE0CA01DDE860 /* PatchNodeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */; };
+		06697106795457BAC1E95363 /* SharedPerformancePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */; };
+		085E6EF80BF3E2FF290C8F6D /* Rev3Parameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */; };
+		0C426A94E29F76CCFCC934D4 /* MasterVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */; };
+		0EF9BD22B2DE6C69D7C50F6A /* EffectsDSP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43668D8B7739D897A432F58 /* EffectsDSP.swift */; };
+		16837014F2FAC65759F2167F /* EffectsDSP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43668D8B7739D897A432F58 /* EffectsDSP.swift */; };
+		169B7A8286D0D4BF047401ED /* EffectsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */; };
+		1C4140E9FF4D3CA967D46AD9 /* MIDIInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D27F69A608C81BC5B6993B /* MIDIInput.swift */; };
+		1C834F8B4024B514561D1538 /* MIDIInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D27F69A608C81BC5B6993B /* MIDIInput.swift */; };
+		1CFE7FE6FD7E336B2E1D3C0B /* InstrumentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */; };
+		203DB71AD377575E32E0F14D /* EffectsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826AC7041428DB53C66346C8 /* EffectsController.swift */; };
+		2A6E26B8409F56A3D299C98B /* Synth05AU-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D3E2286C2F221856D64FF2E /* Synth05AU-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2BEC292A288A9E2855D78931 /* SharedPerformancePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */; };
+		32EDF13BF37E80667E414EBF /* PatchNodeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */; };
+		347D03B2CC42DEFD6B5F5CD0 /* MIDIInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */; };
+		38C42D6ADBF4DD763C00F3A2 /* EffectsGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 779C701F0A44D93E97379C92 /* EffectsGraph.swift */; };
+		3B6A7EF7BBA6AE53E271A895 /* EffectsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */; };
+		3D8F1536EC6BA281B8B8D00D /* MIDIInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D27F69A608C81BC5B6993B /* MIDIInput.swift */; };
+		3F96422784E3D170576F3B90 /* MIDIInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D27F69A608C81BC5B6993B /* MIDIInput.swift */; };
+		413A5609633C7DEBB47E29D3 /* EffectsPatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */; };
+		49D17348F03E49E48CAC4259 /* PatchNodeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */; };
+		4C84AABA69DE7A65C7E69D21 /* AudioUnitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682314394E672C356E10F56 /* AudioUnitViewController.swift */; };
+		4D8D49D748EA0103348E98C8 /* SynthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */; };
+		4E6062109540CC1CDB84F6CC /* SynthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */; };
+		4EB47CFC335E32795BFADE62 /* EffectsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */; };
+		4ED690C7CADECCB6CC5B631A /* ProphetCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159FB94714E01C9E06DB2E12 /* ProphetCore.swift */; };
+		4EDED3B9AE8F348B9A25D4AF /* PatchNodeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */; };
+		50501CAA1F374A2E3EF26DC2 /* InstrumentChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */; };
+		5B5994EAA1FFD0A75B5BEF28 /* HostedSynthAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */; };
+		5D717F92D26746E29075352B /* SharedPerformancePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */; };
+		6063A8296B1C68E81F9B3BBF /* ExpressionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */; };
+		63D7CA4AADCCB688E2907112 /* MetalPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */; };
+		6561A08CFB398725307F0CD5 /* MIDIInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */; };
+		6A52151F3F08FCCE69507036 /* ExpressionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */; };
+		704038C572493BE567F7B452 /* EffectsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826AC7041428DB53C66346C8 /* EffectsController.swift */; };
+		71AEF2EA83FEFDB41D1EA22D /* EffectsGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 779C701F0A44D93E97379C92 /* EffectsGraph.swift */; };
+		73510DF82BE527A428377104 /* EffectsPatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */; };
+		736A6672A3D66134FF5557F4 /* Synth05AU-macOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2FE8BA24843F6B5DFBA482B0 /* Synth05AU-macOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7613FBDFB0FDC650CB08902E /* Rev3Parameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */; };
+		7632CEFC6DB029438453F992 /* EffectsGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 779C701F0A44D93E97379C92 /* EffectsGraph.swift */; };
+		7A8EF6AB3D9CF5B7D06B04DE /* SynthEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */; };
+		8247E081D8707B28828A9440 /* MetalPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */; };
+		82F14CFB6CFD2790C1527F75 /* HostedSynthAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */; };
+		851474E5198355A5E12EA1A5 /* EffectsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826AC7041428DB53C66346C8 /* EffectsController.swift */; };
+		8782D7D1B076283DC497123A /* EffectsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */; };
+		8AFBF533FAABECA52A738796 /* Rev3Parameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */; };
+		8E313055C20711255A286430 /* MetalPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */; };
+		967F58DBA85B22F6624EB136 /* SynthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */; };
+		974AAEDB6BFD5F3FD326EE5A /* MIDIInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */; };
+		9B52175E5AC6E2790047D436 /* ProphetCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159FB94714E01C9E06DB2E12 /* ProphetCore.swift */; };
+		9B8830BF64D4AA04DB1E86E8 /* HostedSynthAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */; };
+		9FBEC2046C80CE31176253C9 /* SynthEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */; };
+		A2D4EFBAF7EE46603C9BC92D /* HostedSynthAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */; };
+		A8340B9B195C0CCBC6FBA670 /* EffectsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826AC7041428DB53C66346C8 /* EffectsController.swift */; };
+		AA66CA424C38FFEAECBB5279 /* InstrumentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */; };
+		AD41551882A6CF6D838F90E9 /* EffectsPatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */; };
+		B5EDDAB5A239DFA73C7BBE72 /* ExpressionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */; };
+		B76E90C64BC1372F3C2591B2 /* InstrumentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */; };
+		B95C4EAD1DA8C65188148F4E /* ProphetCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159FB94714E01C9E06DB2E12 /* ProphetCore.swift */; };
+		BE252A75F7AD37BEF1D66985 /* InstrumentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */; };
+		C18B6DA01BEAE7E0713310E8 /* EffectsDSP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43668D8B7739D897A432F58 /* EffectsDSP.swift */; };
+		C3D64A5DB7CB6B172E72F354 /* InstrumentChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */; };
+		CC74C3332CDDD142563A1923 /* InstrumentChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */; };
+		CDB2EB02D209068132C2B670 /* EffectsGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 779C701F0A44D93E97379C92 /* EffectsGraph.swift */; };
+		D946FEFECE4DBA1EB16CD9EB /* EffectsDSP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43668D8B7739D897A432F58 /* EffectsDSP.swift */; };
+		DA1AED5A3C0DB17E8B60A299 /* Rev3Parameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */; };
+		E275067FE7549EED93BD6330 /* EffectsPatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */; };
+		E57A2839E0D7E9105FC857A1 /* MasterVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */; };
+		E7730D33F30048C3290D1A0B /* AudioUnitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682314394E672C356E10F56 /* AudioUnitViewController.swift */; };
+		ECC260F8C2716D4BA25826CA /* ExpressionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */; };
+		EF1F80D1A20290B1994E8E28 /* ProphetCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159FB94714E01C9E06DB2E12 /* ProphetCore.swift */; };
+		EF7DED99A0291D896970ECBF /* SharedPerformancePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */; };
+		F050B9262C72CB1F1C2577F0 /* SynthEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */; };
+		F0EAA99F36DD1ADA6B32641F /* SynthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */; };
+		F416FCE630D4C38B5F650F4E /* MasterVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */; };
+		F55F39E483BF28784E7AD886 /* SynthEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */; };
+		F74EC847D2901E942A0E57CA /* MetalPanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */; };
+		F882D01879BAAA9E2854F29B /* InstrumentChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */; };
+		FF06E6A2DBC4C2CC7EA250F4 /* MIDIInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DD9D8A4ABC19AE1FF6E8642E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5CDE0F2069FDF62D50B1A138 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 703C46E6D54950A324017A38;
+			remoteInfo = "Synth05AU-macOS";
+		};
+		E231A49EE90A7F1371B07EC3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5CDE0F2069FDF62D50B1A138 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A7A7789FBEAA376682FCC7D3;
+			remoteInfo = "Synth05AU-iOS";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5822F7467D00B60C941FCDA4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2A6E26B8409F56A3D299C98B /* Synth05AU-iOS.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		739AE2B67B1A3850B718B0C5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				736A6672A3D66134FF5557F4 /* Synth05AU-macOS.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterVolumeControl.swift; sourceTree = "<group>"; };
+		0682314394E672C356E10F56 /* AudioUnitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioUnitViewController.swift; sourceTree = "<group>"; };
+		159FB94714E01C9E06DB2E12 /* ProphetCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProphetCore.swift; sourceTree = "<group>"; };
+		2FE8BA24843F6B5DFBA482B0 /* Synth05AU-macOS.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Synth05AU-macOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3030BB295C442E628586A96A /* Synth05-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Synth05-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentPanel.swift; sourceTree = "<group>"; };
+		4D3E2286C2F221856D64FF2E /* Synth05AU-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "Synth05AU-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchNodeCard.swift; sourceTree = "<group>"; };
+		7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rev3Parameters.swift; sourceTree = "<group>"; };
+		71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthApp.swift; sourceTree = "<group>"; };
+		74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentChrome.swift; sourceTree = "<group>"; };
+		74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsViews.swift; sourceTree = "<group>"; };
+		779C701F0A44D93E97379C92 /* EffectsGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsGraph.swift; sourceTree = "<group>"; };
+		826AC7041428DB53C66346C8 /* EffectsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsController.swift; sourceTree = "<group>"; };
+		8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsPatchView.swift; sourceTree = "<group>"; };
+		90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostedSynthAudioUnit.swift; sourceTree = "<group>"; };
+		C00296050BB0761C8E158584 /* Synth05-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Synth05-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C3D27F69A608C81BC5B6993B /* MIDIInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIInput.swift; sourceTree = "<group>"; };
+		C43668D8B7739D897A432F58 /* EffectsDSP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsDSP.swift; sourceTree = "<group>"; };
+		D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalPanelRenderer.swift; sourceTree = "<group>"; };
+		DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressionPanel.swift; sourceTree = "<group>"; };
+		E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIInputState.swift; sourceTree = "<group>"; };
+		E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPerformancePanel.swift; sourceTree = "<group>"; };
+		E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthEngine.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		080D55F406E72B68144AEB10 /* SynthApp */ = {
+			isa = PBXGroup;
+			children = (
+				826AC7041428DB53C66346C8 /* EffectsController.swift */,
+				C43668D8B7739D897A432F58 /* EffectsDSP.swift */,
+				779C701F0A44D93E97379C92 /* EffectsGraph.swift */,
+				8BDF2866221A6A91A1B200F7 /* EffectsPatchView.swift */,
+				74ABC575579BD8C11E85C6D6 /* EffectsViews.swift */,
+				DE63B30320B28010E7E0A753 /* ExpressionPanel.swift */,
+				90FDCA39ADD12521EDCA6283 /* HostedSynthAudioUnit.swift */,
+				74941BDFD071F04C0E31EF34 /* InstrumentChrome.swift */,
+				4A6A2FE23C77B5DF43B12D40 /* InstrumentPanel.swift */,
+				03C727D57E20F3A0925BC69C /* MasterVolumeControl.swift */,
+				D19DF77B5768DBCA362AC61D /* MetalPanelRenderer.swift */,
+				C3D27F69A608C81BC5B6993B /* MIDIInput.swift */,
+				E3CCBAA3CB9D49DDFEEA4AC1 /* MIDIInputState.swift */,
+				58693F3FC3AFBECA563DADB1 /* PatchNodeCard.swift */,
+				159FB94714E01C9E06DB2E12 /* ProphetCore.swift */,
+				7101575AD64A7D07B2C01152 /* Rev3Parameters.swift */,
+				E412CC5546765E8E39450515 /* SharedPerformancePanel.swift */,
+				71A5FC9DDFF9048D2A1536E1 /* SynthApp.swift */,
+				E723EA64BDF055B0B0E74E6A /* SynthEngine.swift */,
+			);
+			name = SynthApp;
+			path = Sources/SynthApp;
+			sourceTree = "<group>";
+		};
+		417E2E3E24E15617C30F18DA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C00296050BB0761C8E158584 /* Synth05-iOS.app */,
+				3030BB295C442E628586A96A /* Synth05-macOS.app */,
+				4D3E2286C2F221856D64FF2E /* Synth05AU-iOS.appex */,
+				2FE8BA24843F6B5DFBA482B0 /* Synth05AU-macOS.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		820A2921F6781C112F70FEFA = {
+			isa = PBXGroup;
+			children = (
+				080D55F406E72B68144AEB10 /* SynthApp */,
+				C60AAD5BA59FC2FD6F8F25BC /* SynthAudioUnit */,
+				417E2E3E24E15617C30F18DA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C60AAD5BA59FC2FD6F8F25BC /* SynthAudioUnit */ = {
+			isa = PBXGroup;
+			children = (
+				0682314394E672C356E10F56 /* AudioUnitViewController.swift */,
+			);
+			name = SynthAudioUnit;
+			path = Sources/SynthAudioUnit;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		703C46E6D54950A324017A38 /* Synth05AU-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C49DA39E5E565F44FA7A2D6 /* Build configuration list for PBXNativeTarget "Synth05AU-macOS" */;
+			buildPhases = (
+				284F06A658E183EF50329C84 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Synth05AU-macOS";
+			packageProductDependencies = (
+			);
+			productName = "Synth05AU-macOS";
+			productReference = 2FE8BA24843F6B5DFBA482B0 /* Synth05AU-macOS.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		7B0A805AF9B88840CDCAD9BB /* Synth05-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8318821580B38C304A39B4BF /* Build configuration list for PBXNativeTarget "Synth05-macOS" */;
+			buildPhases = (
+				3BB5BF6A04B5FB38A8ECC056 /* Sources */,
+				739AE2B67B1A3850B718B0C5 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				72030E83F018A1DB9608D642 /* PBXTargetDependency */,
+			);
+			name = "Synth05-macOS";
+			packageProductDependencies = (
+			);
+			productName = "Synth05-macOS";
+			productReference = 3030BB295C442E628586A96A /* Synth05-macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7C53398C88B420247C80448B /* Synth05-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1F99DE20E68B4A7EB5DEA93 /* Build configuration list for PBXNativeTarget "Synth05-iOS" */;
+			buildPhases = (
+				FCDA5F8418745812CFF43310 /* Sources */,
+				5822F7467D00B60C941FCDA4 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6F64847E88C409F1EBBA4655 /* PBXTargetDependency */,
+			);
+			name = "Synth05-iOS";
+			packageProductDependencies = (
+			);
+			productName = "Synth05-iOS";
+			productReference = C00296050BB0761C8E158584 /* Synth05-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A7A7789FBEAA376682FCC7D3 /* Synth05AU-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9E67715D144F2F3092F9CF8 /* Build configuration list for PBXNativeTarget "Synth05AU-iOS" */;
+			buildPhases = (
+				166FA3EA9A48CF51A9479A15 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Synth05AU-iOS";
+			packageProductDependencies = (
+			);
+			productName = "Synth05AU-iOS";
+			productReference = 4D3E2286C2F221856D64FF2E /* Synth05AU-iOS.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5CDE0F2069FDF62D50B1A138 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					703C46E6D54950A324017A38 = {
+						ProvisioningStyle = Automatic;
+					};
+					7B0A805AF9B88840CDCAD9BB = {
+						ProvisioningStyle = Automatic;
+					};
+					7C53398C88B420247C80448B = {
+						ProvisioningStyle = Automatic;
+					};
+					A7A7789FBEAA376682FCC7D3 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 30F39DEAACE99646FBCD7624 /* Build configuration list for PBXProject "Synth05" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 820A2921F6781C112F70FEFA;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 417E2E3E24E15617C30F18DA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7B0A805AF9B88840CDCAD9BB /* Synth05-macOS */,
+				703C46E6D54950A324017A38 /* Synth05AU-macOS */,
+				7C53398C88B420247C80448B /* Synth05-iOS */,
+				A7A7789FBEAA376682FCC7D3 /* Synth05AU-iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		166FA3EA9A48CF51A9479A15 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C84AABA69DE7A65C7E69D21 /* AudioUnitViewController.swift in Sources */,
+				203DB71AD377575E32E0F14D /* EffectsController.swift in Sources */,
+				0EF9BD22B2DE6C69D7C50F6A /* EffectsDSP.swift in Sources */,
+				CDB2EB02D209068132C2B670 /* EffectsGraph.swift in Sources */,
+				AD41551882A6CF6D838F90E9 /* EffectsPatchView.swift in Sources */,
+				3B6A7EF7BBA6AE53E271A895 /* EffectsViews.swift in Sources */,
+				ECC260F8C2716D4BA25826CA /* ExpressionPanel.swift in Sources */,
+				82F14CFB6CFD2790C1527F75 /* HostedSynthAudioUnit.swift in Sources */,
+				C3D64A5DB7CB6B172E72F354 /* InstrumentChrome.swift in Sources */,
+				B76E90C64BC1372F3C2591B2 /* InstrumentPanel.swift in Sources */,
+				1C834F8B4024B514561D1538 /* MIDIInput.swift in Sources */,
+				974AAEDB6BFD5F3FD326EE5A /* MIDIInputState.swift in Sources */,
+				E57A2839E0D7E9105FC857A1 /* MasterVolumeControl.swift in Sources */,
+				8247E081D8707B28828A9440 /* MetalPanelRenderer.swift in Sources */,
+				05AFAE1BD20FE0CA01DDE860 /* PatchNodeCard.swift in Sources */,
+				9B52175E5AC6E2790047D436 /* ProphetCore.swift in Sources */,
+				DA1AED5A3C0DB17E8B60A299 /* Rev3Parameters.swift in Sources */,
+				06697106795457BAC1E95363 /* SharedPerformancePanel.swift in Sources */,
+				4E6062109540CC1CDB84F6CC /* SynthApp.swift in Sources */,
+				F050B9262C72CB1F1C2577F0 /* SynthEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		284F06A658E183EF50329C84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E7730D33F30048C3290D1A0B /* AudioUnitViewController.swift in Sources */,
+				704038C572493BE567F7B452 /* EffectsController.swift in Sources */,
+				16837014F2FAC65759F2167F /* EffectsDSP.swift in Sources */,
+				7632CEFC6DB029438453F992 /* EffectsGraph.swift in Sources */,
+				E275067FE7549EED93BD6330 /* EffectsPatchView.swift in Sources */,
+				8782D7D1B076283DC497123A /* EffectsViews.swift in Sources */,
+				B5EDDAB5A239DFA73C7BBE72 /* ExpressionPanel.swift in Sources */,
+				A2D4EFBAF7EE46603C9BC92D /* HostedSynthAudioUnit.swift in Sources */,
+				F882D01879BAAA9E2854F29B /* InstrumentChrome.swift in Sources */,
+				AA66CA424C38FFEAECBB5279 /* InstrumentPanel.swift in Sources */,
+				3D8F1536EC6BA281B8B8D00D /* MIDIInput.swift in Sources */,
+				6561A08CFB398725307F0CD5 /* MIDIInputState.swift in Sources */,
+				04A376B1E8A881D9A98F7826 /* MasterVolumeControl.swift in Sources */,
+				8E313055C20711255A286430 /* MetalPanelRenderer.swift in Sources */,
+				4EDED3B9AE8F348B9A25D4AF /* PatchNodeCard.swift in Sources */,
+				B95C4EAD1DA8C65188148F4E /* ProphetCore.swift in Sources */,
+				085E6EF80BF3E2FF290C8F6D /* Rev3Parameters.swift in Sources */,
+				EF7DED99A0291D896970ECBF /* SharedPerformancePanel.swift in Sources */,
+				F0EAA99F36DD1ADA6B32641F /* SynthApp.swift in Sources */,
+				F55F39E483BF28784E7AD886 /* SynthEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BB5BF6A04B5FB38A8ECC056 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				851474E5198355A5E12EA1A5 /* EffectsController.swift in Sources */,
+				C18B6DA01BEAE7E0713310E8 /* EffectsDSP.swift in Sources */,
+				71AEF2EA83FEFDB41D1EA22D /* EffectsGraph.swift in Sources */,
+				73510DF82BE527A428377104 /* EffectsPatchView.swift in Sources */,
+				169B7A8286D0D4BF047401ED /* EffectsViews.swift in Sources */,
+				6A52151F3F08FCCE69507036 /* ExpressionPanel.swift in Sources */,
+				9B8830BF64D4AA04DB1E86E8 /* HostedSynthAudioUnit.swift in Sources */,
+				CC74C3332CDDD142563A1923 /* InstrumentChrome.swift in Sources */,
+				1CFE7FE6FD7E336B2E1D3C0B /* InstrumentPanel.swift in Sources */,
+				3F96422784E3D170576F3B90 /* MIDIInput.swift in Sources */,
+				347D03B2CC42DEFD6B5F5CD0 /* MIDIInputState.swift in Sources */,
+				F416FCE630D4C38B5F650F4E /* MasterVolumeControl.swift in Sources */,
+				63D7CA4AADCCB688E2907112 /* MetalPanelRenderer.swift in Sources */,
+				49D17348F03E49E48CAC4259 /* PatchNodeCard.swift in Sources */,
+				EF1F80D1A20290B1994E8E28 /* ProphetCore.swift in Sources */,
+				8AFBF533FAABECA52A738796 /* Rev3Parameters.swift in Sources */,
+				5D717F92D26746E29075352B /* SharedPerformancePanel.swift in Sources */,
+				967F58DBA85B22F6624EB136 /* SynthApp.swift in Sources */,
+				7A8EF6AB3D9CF5B7D06B04DE /* SynthEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FCDA5F8418745812CFF43310 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A8340B9B195C0CCBC6FBA670 /* EffectsController.swift in Sources */,
+				D946FEFECE4DBA1EB16CD9EB /* EffectsDSP.swift in Sources */,
+				38C42D6ADBF4DD763C00F3A2 /* EffectsGraph.swift in Sources */,
+				413A5609633C7DEBB47E29D3 /* EffectsPatchView.swift in Sources */,
+				4EB47CFC335E32795BFADE62 /* EffectsViews.swift in Sources */,
+				6063A8296B1C68E81F9B3BBF /* ExpressionPanel.swift in Sources */,
+				5B5994EAA1FFD0A75B5BEF28 /* HostedSynthAudioUnit.swift in Sources */,
+				50501CAA1F374A2E3EF26DC2 /* InstrumentChrome.swift in Sources */,
+				BE252A75F7AD37BEF1D66985 /* InstrumentPanel.swift in Sources */,
+				1C4140E9FF4D3CA967D46AD9 /* MIDIInput.swift in Sources */,
+				FF06E6A2DBC4C2CC7EA250F4 /* MIDIInputState.swift in Sources */,
+				0C426A94E29F76CCFCC934D4 /* MasterVolumeControl.swift in Sources */,
+				F74EC847D2901E942A0E57CA /* MetalPanelRenderer.swift in Sources */,
+				32EDF13BF37E80667E414EBF /* PatchNodeCard.swift in Sources */,
+				4ED690C7CADECCB6CC5B631A /* ProphetCore.swift in Sources */,
+				7613FBDFB0FDC650CB08902E /* Rev3Parameters.swift in Sources */,
+				2BEC292A288A9E2855D78931 /* SharedPerformancePanel.swift in Sources */,
+				4D8D49D748EA0103348E98C8 /* SynthApp.swift in Sources */,
+				9FBEC2046C80CE31176253C9 /* SynthEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6F64847E88C409F1EBBA4655 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A7A7789FBEAA376682FCC7D3 /* Synth05AU-iOS */;
+			targetProxy = E231A49EE90A7F1371B07EC3 /* PBXContainerItemProxy */;
+		};
+		72030E83F018A1DB9608D642 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 703C46E6D54950A324017A38 /* Synth05AU-macOS */;
+			targetProxy = DD9D8A4ABC19AE1FF6E8642E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2C3C087F54075962D2C1A339 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "AudioUnit/App-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "AudioUnit/App-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		3374C648958C50D8401EC70D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				INFOPLIST_FILE = "AudioUnit/Extension-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth.AudioUnit;
+				PRODUCT_NAME = SYNTH05AudioUnit;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SYNTH_AUDIO_UNIT";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		44783EDCF1032BBFF71D0A24 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = "AudioUnit/Extension-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "AudioUnit/Extension-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth.AudioUnit;
+				PRODUCT_NAME = SYNTH05AudioUnit;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SYNTH_AUDIO_UNIT";
+			};
+			name = Release;
+		};
+		4824F05F1BE27FE2B0354E06 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SYNTH/05;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = SYNTH05;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		48CD8D2A71EA751CD0E0D671 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SYNTH/05;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = SYNTH05;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		91E7136F8B1DB881E3A95453 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "AudioUnit/App-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9CBB0EE54AF24A8ED1B73396 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "AudioUnit/App-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "AudioUnit/App-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		9CCA00FFE5157F8D8DB43070 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				INFOPLIST_FILE = "AudioUnit/Extension-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth.AudioUnit;
+				PRODUCT_NAME = SYNTH05AudioUnit;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SYNTH_AUDIO_UNIT";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		ADA155AA7268E1B307A49687 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = "AudioUnit/Extension-macOS.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "AudioUnit/Extension-macOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth.AudioUnit;
+				PRODUCT_NAME = SYNTH05AudioUnit;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SYNTH_AUDIO_UNIT";
+			};
+			name = Debug;
+		};
+		DA20C64A9357F0E191F06621 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "AudioUnit/App-iOS-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.synth05.Synth;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C49DA39E5E565F44FA7A2D6 /* Build configuration list for PBXNativeTarget "Synth05AU-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ADA155AA7268E1B307A49687 /* Debug */,
+				44783EDCF1032BBFF71D0A24 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		30F39DEAACE99646FBCD7624 /* Build configuration list for PBXProject "Synth05" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				48CD8D2A71EA751CD0E0D671 /* Debug */,
+				4824F05F1BE27FE2B0354E06 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8318821580B38C304A39B4BF /* Build configuration list for PBXNativeTarget "Synth05-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9CBB0EE54AF24A8ED1B73396 /* Debug */,
+				2C3C087F54075962D2C1A339 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D1F99DE20E68B4A7EB5DEA93 /* Build configuration list for PBXNativeTarget "Synth05-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				91E7136F8B1DB881E3A95453 /* Debug */,
+				DA20C64A9357F0E191F06621 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D9E67715D144F2F3092F9CF8 /* Build configuration list for PBXNativeTarget "Synth05AU-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3374C648958C50D8401EC70D /* Debug */,
+				9CCA00FFE5157F8D8DB43070 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5CDE0F2069FDF62D50B1A138 /* Project object */;
+}

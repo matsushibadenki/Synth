@@ -71,7 +71,7 @@ func checkRev3Behavior() throws {
     p.envBAttack=0.001; p.envBDecay=0.001; p.envBSustain=1
     let a=try AudioProbe(p), b=try AudioProbe(p)
     a.unit.noteOn(60,velocity:0.1); b.unit.noteOn(60,velocity:1)
-    precondition(a.samples()==b.samples(),"Rev3 keyboard is not velocity sensitive")
+    precondition(rms(a.samples())<rms(b.samples())*0.15,"Velocity must control voice gain")
     p.oscASaw=false
     let silent=try AudioProbe(p); silent.unit.noteOn(60,velocity:1)
     precondition(rms(silent.samples())<0.00001,"No oscillator shapes means silence")
@@ -120,5 +120,5 @@ func checkRev3Behavior() throws {
     precondition(rms(reference.samples())>0.01,"A-440 must play without held keys")
     reference.parameters.set { $0.masterVolume=0 }
     precondition(rms(reference.samples())==0,"Volume must mute reference tone")
-    print("Rev3 behavior: wave sums, velocity independence, low-note priority, release, noise/PWM routes and A-440 passed")
+    print("Rev3 behavior: wave sums, velocity gain, low-note priority, release, noise/PWM routes and A-440 passed")
 }

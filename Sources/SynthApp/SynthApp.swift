@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if !SYNTH_AUDIO_UNIT
 @main
 struct SynthApp: App {
     @StateObject private var engine = SynthEngine()
@@ -10,6 +11,8 @@ struct SynthApp: App {
         #endif
     }
 }
+
+#endif
 
 struct ContentView: View {
     @ObservedObject var engine: SynthEngine
@@ -75,7 +78,18 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onReceive(engine.$midiControlEvent) { event in
+            switch event {
+            case let .pitch(value): parameters.pitchWheel=value
+            case let .mod(value): parameters.modWheel=value
+            default: break
+            }
+        }
+        .onReceive(engine.$hostParameters) { next in
+            if engine.isHosted,let next { parameters=next }
+        }
         .onAppear {
+            if engine.isHosted { parameters=engine.sharedParams.snapshot();engine.start();return }
             if let data=UserDefaults.standard.data(forKey:"synth.expression.v1"),
                let expression=try? JSONDecoder().decode(ExpressionParameters.self,from:data) { parameters.expression=expression }
             loadProgram(); apply(); engine.start()
@@ -132,8 +146,16 @@ struct ContentView: View {
                 .help(instrumentText("Controls","操作方法","操作说明"))
                 .accessibilityLabel(instrumentText("Controls","操作方法","操作说明"))
                 .popover(isPresented:$showInfo) {
-                    Text(instrumentText("Drag knobs and wheels vertically. Double-click to restore their initial setting. Hold keys to play.","ノブとホイールは上下にドラッグ。ダブルタップで初期値に戻ります。鍵盤を押して演奏します。","上下拖动旋钮和控制轮，双击恢复初始值，按住琴键演奏。"))
-                        .padding(20).frame(idealWidth:280)
+                    VStack(alignment:.leading,spacing:12) {
+                        Text(instrumentText("Drag knobs and wheels vertically. Double-click to restore their initial setting. Hold keys to play.","ノブとホイールは上下にドラッグ。ダブルタップで初期値に戻ります。鍵盤を押して演奏します。","上下拖动旋钮和控制轮，双击恢复初始值，按住琴键演奏。"))
+                        Text(engine.isHosted ? instrumentText("Audio Unit · MIDI and audio are managed by the host.","Audio Unit · MIDIと音声はホストが管理します。","Audio Unit · MIDI与音频由宿主管理。") : instrumentText(
+                            "MIDI inputs: \(engine.midiSourceCount). All channels · Sustain CC64 · Mod CC1 · Pitch ±7 semitones. DAW destination: SYNTH/05.",
+                            "MIDI入力: \(engine.midiSourceCount)。全チャンネル・サステインCC64・Mod CC1・ピッチ±7半音。DAW入力先: SYNTH/05。",
+                            "MIDI输入：\(engine.midiSourceCount)。所有通道・延音CC64・调制CC1・弯音±7半音。DAW目标：SYNTH/05。"))
+                        if let error=engine.midiError {
+                            Text(instrumentText("MIDI unavailable", "MIDIを利用できません", "MIDI不可用")+" (\(error))")
+                        }
+                    }.padding(20).frame(idealWidth:280)
                 }
             Button { parameters.autoTuneTrigger &+= 1; apply() } label: { Image(systemName:"tuningfork").frame(width:32,height:32) }
                 .help(instrumentText("Tune oscillators","オシレーターをチューニング","振荡器调音"))
@@ -143,6 +165,7 @@ struct ContentView: View {
                 .help(instrumentText("440 Hz reference tone","440 Hz 基準音","440 Hz 参考音"))
                 .accessibilityValue(parameters.referenceA440 ? instrumentText("On","オン","开"):instrumentText("Off","オフ","关"))
             Button(action:togglePower) { Image(systemName:"power").frame(width:32,height:32) }
+                .disabled(engine.isHosted)
                 .buttonStyle(HardwareButtonStyle(selected:engine.isRunning))
                 .help(instrumentText("Power","電源","电源"))
                 .accessibilityLabel(instrumentText("Power","電源","电源"))
@@ -182,8 +205,8 @@ struct ContentView: View {
         }
     }
     private func apply() {
-        engine.sharedParams.set { $0=parameters }
-        if let data=try? JSONEncoder().encode(parameters.expression) {
+        engine.applyParameters(parameters)
+        if !engine.isHosted,let data=try? JSONEncoder().encode(parameters.expression) {
             UserDefaults.standard.set(data,forKey:"synth.expression.v1")
         }
     }

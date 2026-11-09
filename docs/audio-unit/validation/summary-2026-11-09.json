@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-09",
+  "platform": "27.2",
+  "architecture": "arm64",
+  "component": {
+    "type": "aumu",
+    "subtype": "S05a",
+    "manufacturer": "Sy05",
+    "parameters": 50
+  },
+  "macos_app_and_extension_build": "passed (Debug, local ad-hoc signature)",
+  "ios_simulator_app_and_extension_build": "passed (unsigned Simulator compilation)",
+  "apple_auval": "passed",
+  "out_of_process_host_probe": "passed: custom UI, parameter access, state roundtrip and MIDI/velocity render, no output device started",
+  "offline_au_regression": "passed: 44.1/48/96kHz offsets, velocity-zero release, nil buffers, parameter/MIDI scheduling, independent instances, state validation, UI automation merge, reallocation, reset with delay tails",
+  "fx_controller_regression": "passed: hosted state restoration and standalone defaults isolation",
+  "fx_dsp_graph_regression": "passed: three rates, modes, feedback, looper, graph/persistence",
+  "standalone_render_fingerprints": "12 sampleset hashes match the pre-AU velocity-enabled core",
+  "native_node_snapshots": "320/430/1100pt and selected/bypass gallery inspected",
+  "gitignore_checks": "11 generated/local paths ignored; 9 source/shared/asset paths retained using --no-index",
+  "pending": [
+    "Physical iPhone/iPad AUv3 hosts",
+    "Commercial DAW/session/bounce/automation-recording workflows",
+    "Live performance deadlines under combined AU and UI/GPU load",
+    "Physical-device patch-canvas interaction"
+  ],
+  "source_sha256_at_report": {
+    "project.yml": "131c599635288103fb83a5b921a99cf49f54d27df3bc7662a4b4e815cb4f7668",
+    "Sources/SynthApp/HostedSynthAudioUnit.swift": "41c0349415128b3cf784b0ca83a46bb51439284d0c71fdc05d33b5770aa3c32f",
+    "Sources/SynthApp/ProphetCore.swift": "8636af205a3f018bb992e6d5882cbdcb30d9e5c614b92bbc4cb2f1693e09dc95",
+    "Sources/SynthApp/EffectsDSP.swift": "02300259cd4a52a4e0bae4627b28b933afe7b13ce876f4d7124486fcce9676b4",
+    "Sources/SynthApp/SynthEngine.swift": "835f39f2ef31c30c15a1165879aa62cea70994295881fbe1a408234b76928ab1",
+    "Sources/SynthApp/EffectsController.swift": "fb70a902ca4e4421bf389520521d046e4805dbfec41186ef3691a0ce303e24e7",
+    "Sources/SynthApp/EffectsGraph.swift": "e2898820f9b08812170b1bb51de30595ce8234f6cb8201487efba34cee2f17b1",
+    "Sources/SynthApp/EffectsPatchView.swift": "6879c0c8e660fcde5ea86eb0ceba790d3f83a63ebfc2f7d22d0e1b3d74713c45",
+    "Sources/SynthApp/PatchNodeCard.swift": "41734b7a5bc019ad62d53ccf4944d46ca2072491ed1f985bb81a63efbd24a8a3",
+    "Sources/SynthAudioUnit/AudioUnitViewController.swift": "3a9459ea769ba8ec616412fda7bce6d3bcd3c515311ec54210d1b24c5ee86f0d"
+  }
+}

@@ -1,0 +1,1 @@
+Out-of-process AUv3: 50 parameters, custom UI, state roundtrip and host MIDI/velocity rendering passed; no output device started

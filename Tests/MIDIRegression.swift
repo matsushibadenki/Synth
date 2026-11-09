@@ -1,0 +1,41 @@
+// swiftc -O Sources/SynthApp/MIDIInputState.swift Tests/MIDIRegression.swift -o /tmp/synth-midi-state
+import Foundation
+@main struct MIDIRegression {
+    static func main() {
+        var decoder=MIDIByteDecoder(),messages=[MIDIMessage]()
+        func feed(_ bytes:[UInt8]) { for byte in bytes { if let m=decoder.consume(byte) { messages.append(m) } } }
+        feed([0x90,60]);feed([0xF8,100,61,0,0xB2,64,127,0xE2,0,64])
+        precondition(messages == [.on(0,60,100),.off(0,61),.cc(2,64,127),.pitch(2,8192)])
+        messages.removeAll()
+        feed([0xF0,1,2,0xF8,3,0xF7,60,100,0xF2,0,0,61,100,0xC0,7,8,0xD0,10,0x91,62,120])
+        precondition(messages == [.on(1,62,120)],"System common/SysEx cancel running status; program/pressure data must not become notes")
+        var other=MIDIByteDecoder()
+        precondition(other.consume(64)==nil && other.consume(127)==nil,"Sources cannot share running status")
+        var state=MIDIPerformanceState()
+        precondition(state.consume(.on(0,60,127),source:1)==[.on(60,1)])
+        precondition(state.consume(.on(0,60,100),source:2).isEmpty)
+        precondition(state.consume(.off(0,60),source:1).isEmpty)
+        _=state.consume(.cc(0,64,127),source:2)
+        precondition(state.consume(.off(0,60),source:2).isEmpty && state.sounding==[60])
+        precondition(state.consume(.cc(0,64,0),source:2)==[.off(60)])
+        _=state.consume(.on(0,62,80),source:1);_=state.consume(.on(1,62,80),source:1)
+        precondition(state.consume(.cc(0,123,0),source:1).isEmpty)
+        precondition(state.consume(.off(1,62),source:1)==[.off(62)])
+        _=state.consume(.cc(0,64,127),source:1);_=state.consume(.on(0,64,127),source:1)
+        precondition(state.consume(.cc(0,123,0),source:1).isEmpty)
+        precondition(state.consume(.cc(0,121,0),source:1)==[.off(64)])
+        _=state.consume(.on(0,65,127),source:1);_=state.consume(.off(0,65),source:1)
+        precondition(state.sounding.isEmpty,"Reset controllers releases pedal")
+        precondition(state.consume(.pitch(2,0),source:1)==[.pitch(-1)])
+        precondition(state.consume(.pitch(2,16383),source:1)==[.pitch(1)])
+        precondition(state.consume(.pitch(2,8192),source:1)==[.pitch(0)])
+        precondition(state.consume(.cc(2,1,127),source:1)==[.mod(1)])
+        _=state.consume(.on(2,67,127),source:1)
+        precondition(state.disconnect(2).isEmpty)
+        precondition(state.disconnect(1)==[.off(67),.pitch(0),.mod(0)])
+        _=state.consume(.on(3,69,127),source:1);_=state.consume(.cc(3,64,127),source:1)
+        precondition(state.consume(.cc(3,120,0),source:1)==[.off(69)])
+        precondition(state.reset().isEmpty)
+        print("MIDI parser/performance: running status, split packets, realtime/SysEx, channels/sources, sustain, controllers, resets and disconnect passed")
+    }
+}

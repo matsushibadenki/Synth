@@ -2,7 +2,7 @@ import Foundation
 
 // Original Prophet-5 Rev3: 24 programmable potentiometers and 22 switches.
 // Source: Sequential CM1000D (2/82), sections 2 and 6-7, pp. 6-5–6-6.
-struct SynthParameters: Equatable {
+struct SynthParameters: Codable, Equatable {
     var expression = ExpressionParameters()
     var polyModFilterEnv: Float = 0
     var polyModOscB: Float = 0

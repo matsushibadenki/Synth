@@ -18,6 +18,11 @@ final class SharedSynthParameters {
         return raw
     }
 
+    @discardableResult func trySet(_ edit: (inout SynthParameters) -> Void) -> Bool {
+        guard lock.try() else { return false };defer { lock.unlock() }
+        edit(&raw);return true
+    }
+
     func trySnapshot() -> SynthParameters? {
         guard lock.try() else { return nil }
         defer { lock.unlock() }
@@ -51,6 +56,7 @@ private struct HeldMIDIKeys {
 private struct PendingNoteEvent {
     var note = 0
     var on = false
+    var velocity: Float = 1
 }
 
 // Component values below are restrained behavioral approximations, not measured
@@ -308,6 +314,9 @@ private struct VoiceDecimator {
         coefficients = taps.map { $0/sum }
         history = [Float](repeating:0,count:count*2)
     }
+    mutating func reset() {
+        for i in history.indices { history[i]=0 };cursor=0
+    }
     mutating func push(_ input: Float) {
         history[cursor] = input; history[cursor+coefficients.count] = input
         cursor += 1
@@ -458,7 +467,8 @@ private struct VoiceState {
     var active = false
     var held = false
     var age: UInt64 = 0
-    var velocity: Float = 0.85
+    var velocity: Float = 1
+    var velocityGain: Float = 1
     var cachedHzA: Float = 261.63
     var cachedHzB: Float = 261.63
     var cachedKeyboardTrack: Float = 0
@@ -496,7 +506,7 @@ private struct VoiceState {
     }
 }
 
-final class ProphetLikeAudioUnit: AUAudioUnit {
+class ProphetLikeAudioUnit: AUAudioUnit {
     static var sharedParameters = SharedSynthParameters()
     static var sharedEffects = SharedEffects()
     private let effects: SharedEffects
@@ -527,6 +537,8 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private var pink = SIMD3<Float>(repeating: 0)
     private var referencePhase: Float = 0
     private var heldKeys = HeldMIDIKeys()
+    // Fixed MIDI range: remember held-key dynamics for unison priority fallback.
+    private var heldVelocities = [Float](repeating:1,count:128)
     private var lastUnison = false
     private let eventLock = NSLock()
     // UI writes under the mutex. Audio only attempts the lock and otherwise
@@ -545,6 +557,33 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
         outputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
         inputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .input, busses: [])
     }
+
+    // AUv3 supplies independent storage; the standalone initializer remains compatible.
+    init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions,
+         parameters: SharedSynthParameters, effects: SharedEffects) throws {
+        self.params=parameters;self.effects=effects
+        outputBus=try AUAudioUnitBus(format:AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!)
+        try super.init(componentDescription:componentDescription,options:options)
+        outputBusArray=AUAudioUnitBusArray(audioUnit:self,busType:.output,busses:[outputBus])
+        inputBusArray=AUAudioUnitBusArray(audioUnit:self,busType:.input,busses:[])
+    }
+    var parameterStorage: SharedSynthParameters { params }
+    var effectStorage: SharedEffects { effects }
+    // Only the AUv3 render thread uses these entry points/override; no queue lock.
+    var renderParameterOverride: SynthParameters?
+    // AUv3 allocation/reset: the host serializes these calls with rendering.
+    // Reset clears preallocated history without building new DSP/storage.
+    func resetHostPerformance(clearQueue:Bool = true) {
+        if clearQueue { eventLock.lock();pendingEventCount=0;pendingEventOverflow=false;eventLock.unlock() }
+        heldKeys.removeAll();lastUnison=false;rrCursor=0;ageCounter=0
+        for i in heldVelocities.indices { heldVelocities[i]=1 }
+        for i in voices.indices { voices[i]=VoiceState(index:i) }
+        decimator.reset();effectsDSP.reset();controlsInitialized=false
+        lfoPhase=0;pink = .zero;referencePhase=0;expressionPhase=0
+        rngState=0x1234ABCD;renderParameterOverride=nil
+    }
+    func hostNoteOn(_ note:Int,velocity:Float,parameters:SynthParameters) { handleNoteOn(note,velocity:velocity,parameters:parameters) }
+    func hostNoteOff(_ note:Int,parameters:SynthParameters) { handleNoteOff(note,parameters:parameters) }
 
     override var outputBusses: AUAudioUnitBusArray { outputBusArray }
     override var inputBusses: AUAudioUnitBusArray { inputBusArray }
@@ -570,7 +609,8 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     override var internalRenderBlock: AUInternalRenderBlock {
         return { [weak self] _, _, frameCount, _, outputData, _, _ in
             guard let self else { return noErr }
-            if let latest = self.params.trySnapshot() { self.renderParameters = latest }
+            if let override=self.renderParameterOverride { self.renderParameters=override }
+            else if let latest = self.params.trySnapshot() { self.renderParameters = latest }
             let p = self.renderParameters
             if let configuration=self.effects.trySnapshot() { self.effectsDSP.prepare(configuration) }
             var eventCount = 0
@@ -595,11 +635,11 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                 for i in self.voices.indices { self.voices[i].held = false }
                 let notes = self.heldKeys
                 self.heldKeys.removeAll()
-                for note in 0..<128 where notes.contains(note) { self.handleNoteOn(note, velocity: 1, parameters:p) }
+                for note in 0..<128 where notes.contains(note) { self.handleNoteOn(note, velocity: self.heldVelocities[note], parameters:p) }
             }
             for index in 0..<eventCount {
                 let event = self.renderEvents[index]
-                if event.on { self.handleNoteOn(event.note, velocity: 1, parameters:p) }
+                if event.on { self.handleNoteOn(event.note, velocity: event.velocity, parameters:p) }
                 else { self.handleNoteOff(event.note, parameters:p) }
             }
 
@@ -623,6 +663,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
             let controlSlew = -expm1f(-1/(hostRate*0.004))
             let tuneSlew = -expm1f(-1/(hostRate*0.06))
             let dcPole = expf(-2 * .pi*5/sr)
+            let velocitySlew = -expm1f(-1/(sr*0.001))
             let noiseGain = sqrtf(sr/48000)
             let pinkPoles = SIMD3(powf(0.99765,48000/sr),powf(0.963,48000/sr),powf(0.57,48000/sr))
             let pinkGains = SIMD3<Float>(0.099046,0.2965164,1.0526913)*(1-pinkPoles)/(1-SIMD3<Float>(0.99765,0.963,0.57))
@@ -801,7 +842,13 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                             let coupled = filtered-voiceBuffer[vi].dcInput+dcPole*voiceBuffer[vi].dcOutput
                             voiceBuffer[vi].dcInput = filtered; voiceBuffer[vi].dcOutput = coupled
                             let voiceOut = AnalogSignalPath.amplifier(coupled,envelope:voiceBuffer[vi].ampEnvelope.level,gain:card.amplifierGain)
-                            outL += voiceOut
+                            // Slew changes on a reused voice; first attacks keep their exact gain.
+                            if voiceBuffer[vi].velocityGain != voiceBuffer[vi].velocity {
+                                let delta=voiceBuffer[vi].velocity-voiceBuffer[vi].velocityGain
+                                voiceBuffer[vi].velocityGain = abs(delta)<0.000001 ? voiceBuffer[vi].velocity:
+                                    voiceBuffer[vi].velocityGain+delta*velocitySlew
+                            }
+                            outL += voiceOut*voiceBuffer[vi].velocityGain
                         }
                         self.decimator.push(outL*0.18)
                     }
@@ -827,13 +874,17 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     }
 
     // UI events are consumed on the render thread; the UI never mutates voices.
-    func noteOn(_ midi: Int, velocity: Float) { enqueue(midi, on: true) }
+    func noteOn(_ midi: Int, velocity: Float) {
+        guard velocity.isFinite else { return }
+        if velocity<=0 { noteOff(midi);return }
+        enqueue(midi,on:true,velocity:min(1,velocity))
+    }
     func noteOff(_ midi: Int) { enqueue(midi, on: false) }
-    private func enqueue(_ midi: Int, on: Bool) {
+    private func enqueue(_ midi: Int, on: Bool, velocity: Float = 1) {
         guard (0...127).contains(midi) else { return }
         eventLock.lock()
         if pendingEventCount < pendingEvents.count && !pendingEventOverflow {
-            pendingEvents[pendingEventCount] = PendingNoteEvent(note:midi,on:on)
+            pendingEvents[pendingEventCount] = PendingNoteEvent(note:midi,on:on,velocity:velocity)
             pendingEventCount += 1
         } else { pendingEventOverflow = true }
         eventLock.unlock()
@@ -842,10 +893,11 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private func handleNoteOn(_ midi: Int, velocity: Float, parameters p: SynthParameters) {
         let previousLowest = heldKeys.min()
         heldKeys.insert(midi)
+        heldVelocities[midi]=velocity
         let hz = 440.0 * powf(2.0, Float(midi - 69) / 12.0)
         if p.unisonMode {
-            guard let lowest = heldKeys.min(), lowest != previousLowest else { return }
-            noteOnUnison(midi: lowest, hz: 440*powf(2,Float(lowest-69)/12), velocity: 1)
+            guard let lowest = heldKeys.min(), lowest != previousLowest || midi==lowest else { return }
+            noteOnUnison(midi: lowest, hz: 440*powf(2,Float(lowest-69)/12), velocity: heldVelocities[lowest])
             return
         }
 
@@ -872,15 +924,19 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
         voices[idx].age = ageCounter
         voices[idx].velocity = min(1.0, max(0.0, velocity))
         voices[idx].targetHz = hz
-        if !wasActive { voices[idx].glideHz = hz; voices[idx].glide.reset(hz) }
+        if !wasActive {
+            voices[idx].velocityGain=voices[idx].velocity
+            voices[idx].glideHz = hz; voices[idx].glide.reset(hz)
+        }
     }
 
     private func handleNoteOff(_ midi: Int, parameters p: SynthParameters) {
         let previousLowest = heldKeys.min()
         heldKeys.remove(midi)
+        heldVelocities[midi]=1
         if p.unisonMode {
             if let lowest = heldKeys.min() {
-                if lowest != previousLowest { noteOnUnison(midi: lowest, hz: 440*powf(2,Float(lowest-69)/12), velocity: 1) }
+                if lowest != previousLowest { noteOnUnison(midi: lowest, hz: 440*powf(2,Float(lowest-69)/12), velocity: heldVelocities[lowest]) }
             } else {
                 for i in voices.indices where voices[i].active { voices[i].held = false }
             }
@@ -953,7 +1009,10 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
             voices[i].age = ageCounter
             voices[i].velocity = min(1.0, max(0.0, velocity))
             voices[i].targetHz = hz
-            if !wasActive { voices[i].glideHz = voices[i].targetHz; voices[i].glide.reset(hz) }
+            if !wasActive {
+                voices[i].velocityGain=voices[i].velocity
+                voices[i].glideHz = voices[i].targetHz; voices[i].glide.reset(hz)
+            }
         }
     }
 }

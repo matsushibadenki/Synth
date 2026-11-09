@@ -1,0 +1,472 @@
+
+    AU Validation Tool
+    Version: 1.10.0 
+    Copyright 2003-2019, Apple Inc. All Rights Reserved.
+    Specify -h (-help) for command options
+
+--------------------------------------------------
+VALIDATING AUDIO UNIT: 'aumu' - 'S05a' - 'Sy05'
+--------------------------------------------------
+Manufacturer String: SYNTH/05
+AudioUnit Name: SYNTH/05
+Component Version: 1.0.0 (0x10000)
+
+* * PASS
+--------------------------------------------------
+TESTING OPEN TIMES:
+COLD:
+
+Loaded AudioUnit out-of-process: true 
+Time to open AudioUnit:         268.053 ms
+WARM:
+
+Loaded AudioUnit out-of-process: true 
+Time to open AudioUnit:         208.887  ms
+This AudioUnit is a version 3 implementation.
+FIRST TIME:
+Time for initialization:        35.567 ms
+
+* * PASS
+--------------------------------------------------
+VERIFYING DEFAULT SCOPE FORMATS:
+Input Scope Bus Configuration:
+ Default Bus Count:0
+
+Output Scope Bus Configuration:
+ Default Bus Count:1
+    Default Format: AudioStreamBasicDescription:  2 ch,  48000 Hz, Float32, deinterleaved
+
+* * PASS
+--------------------------------------------------
+VERIFYING REQUIRED PROPERTIES:
+
+* * PASS
+--------------------------------------------------
+VERIFYING RECOMMENDED PROPERTIES:
+  VERIFYING PROPERTY: Latency
+    PASS
+
+* * PASS
+--------------------------------------------------
+VERIFYING OPTIONAL PROPERTIES:
+  VERIFYING PROPERTY: Tail Time
+    PASS
+  VERIFYING PROPERTY: Bypass Effect
+    PASS
+
+* * PASS
+--------------------------------------------------
+VERIFYING SPECIAL PROPERTIES:
+
+VERIFYING CUSTOM UI
+Cocoa Views Available: 0
+WARNING: CurrentPreset property is deprectated. AU should implement PresentPreset
+
+VERIFYING CLASS INFO
+    PASS
+
+TESTING HOST CALLBACKS
+    PASS
+
+* * PASS
+--------------------------------------------------
+PUBLISHED PARAMETER INFO:
+
+# # # 50 Global Scope Parameters:
+Parameter ID:-719227016
+Name: Poly-Mod filter envelope
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:94046928
+Name: Poly-Mod oscillator B
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1606090804
+Name: LFO frequency
+Parameter Type: Generic
+Values: Minimum = 0.040000, Default = 3.000000, Maximum = 20.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-330354087
+Name: Wheel-Mod LFO / noise mix
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-332175299
+Name: Oscillator A frequency
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 24.000000, Maximum = 48.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-504488236
+Name: Oscillator A pulse width
+Parameter Type: Generic
+Values: Minimum = 0.010000, Default = 0.500000, Maximum = 0.990000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-264373922
+Name: Oscillator B frequency
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 24.000000, Maximum = 48.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:926085547
+Name: Oscillator B fine tuning
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 100.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1732957205
+Name: Oscillator B pulse width
+Parameter Type: Generic
+Values: Minimum = 0.010000, Default = 0.500000, Maximum = 0.990000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-140400989
+Name: Oscillator A level
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.700000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-101265596
+Name: Oscillator B level
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.700000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-523728549
+Name: White noise level
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1716064904
+Name: Filter cutoff
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.420000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1496097885
+Name: Filter resonance
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.280000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:240620328
+Name: Filter envelope amount
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.350000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-314118777
+Name: Filter attack
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.020000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-2088926923
+Name: Filter decay
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.200000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:34232054
+Name: Filter sustain
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.750000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1892242384
+Name: Filter release
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.300000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:977349192
+Name: Amplifier attack
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.010000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-2049791530
+Name: Amplifier decay
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.180000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-296997929
+Name: Amplifier sustain
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.800000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:2071494929
+Name: Amplifier release
+Parameter Type: Generic
+Values: Minimum = 0.001000, Default = 0.300000, Maximum = 30.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-13753639
+Name: Unison glide
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 5.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:324464164
+Name: Master tune
+Parameter Type: Generic
+Values: Minimum = -1.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1617025911
+Name: Master volume
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.800000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1598467611
+Name: Poly-Mod to oscillator A frequency
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1185652748
+Name: Poly-Mod to oscillator A pulse width
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1199406450
+Name: Poly-Mod to filter
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:188758065
+Name: LFO sawtooth
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:364970684
+Name: LFO triangle
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1664233879
+Name: LFO square
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1699650895
+Name: Wheel-Mod to oscillator A frequency
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1699650896
+Name: Wheel-Mod to oscillator B frequency
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-599247919
+Name: Wheel-Mod to oscillator A pulse width
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-599247918
+Name: Wheel-Mod to oscillator B pulse width
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-574775249
+Name: Wheel-Mod to filter
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:2007351798
+Name: Oscillator A sawtooth
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-135092748
+Name: Oscillator A pulse
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:2008040455
+Name: Oscillator sync B to A
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:2007387735
+Name: Oscillator B sawtooth
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-603397982
+Name: Oscillator B triangle
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-95957355
+Name: Oscillator B pulse
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1499796751
+Name: Oscillator B low frequency
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1850037906
+Name: Oscillator B keyboard tracking
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-17450287
+Name: Filter keyboard tracking
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-591741775
+Name: Enable envelope release
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 1.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1572626266
+Name: Unison lowest-note priority
+Parameter Type: Boolean
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:-1930738830
+Name: Pitch wheel
+Parameter Type: Generic
+Values: Minimum = -1.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Parameter ID:1675639482
+Name: Modulation wheel
+Parameter Type: Generic
+Values: Minimum = 0.000000, Default = 0.000000, Maximum = 1.000000
+Flags: Readable, Writable 
+  -parameter PASS
+
+Testing that parameters retain value across reset and initialization
+  PASS
+
+* * PASS
+--------------------------------------------------
+FORMAT TESTS:
+
+Reported Channel Capabilities (explicit):
+      [0, 2]  
+
+No Input, Output Chans:
+0-1   0-2   0-4   0-5   0-6   0-7   0-8
+      X                                   
+
+* * PASS
+--------------------------------------------------
+RENDER TESTS:
+
+Output Format: AudioStreamBasicDescription:  2 ch,  48000 Hz, Float32, deinterleaved
+Render Test at 512 frames
+Slicing Render Test at 64 frames
+  PASS
+
+
+Render Test at 64 frames, sample rate: 22050 Hz
+Render Test at 137 frames, sample rate: 96000 Hz
+Render Test at 4096 frames, sample rate: 48000 Hz
+Render Test at 4096 frames, sample rate: 192000 Hz
+Render Test at 4096 frames, sample rate: 11025 Hz
+Render Test at 512 frames, sample rate: 44100 Hz
+  PASS
+
+Bad Max Frames - Render should fail
+  PASS
+
+Checking parameter setting
+Using AudioUnitSetParameter
+Using AudioUnitScheduleParameter
+  PASS
+
+Test MIDI
+  PASS
+
+* * PASS
+--------------------------------------------------
+AU VALIDATION SUCCEEDED.
+--------------------------------------------------

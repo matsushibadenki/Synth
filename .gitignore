@@ -1,5 +1,40 @@
-# Reproducible SwiftPM build products and caches
+# Swift Package Manager build products and generated Xcode workspace
 /.build/
+/.swiftpm/xcode/
+/.swiftpm/security/
+
+# Xcode local build products and per-user settings
+/build/
+/DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Compiled applications, Audio Unit bundles and distribution archives
+*.app/
+*.appex/
+*.component/
+*.xcarchive/
+*.ipa
+*.dSYM/
+*.dSYM.zip
+*.xcresult/
+
+# Local editor / shell files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.env
+.env.local
+.env.*.local
 
 # macOS Finder metadata
 .DS_Store
+.AppleDouble
+._*
+
+# Keep source assets, Package.resolved, project.yml, Xcode project files,
+# shared schemes, entitlements, Info.plist files, and Previews/*.wav tracked.
