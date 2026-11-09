@@ -1,10 +1,63 @@
 import Foundation
 
+/// Windowed-sinc fractional-delay kernels, prepared before audio rendering.
+/// Read speeds above unity lower the cutoff before time compression can fold.
+enum FXDelayKernels {
+    static let speeds: [Float] = [1,1.5,2,3,4,6,8,12,24,48]
+    static let phases=256, count=32
+    static let coefficients: [Float] = {
+        var result=[Float](repeating:0,count:speeds.count*(phases+1)*count)
+        for bank in speeds.indices {
+            let cutoff=0.45/Double(speeds[bank])
+            for phase in 0...phases {
+                let fraction=Double(phase)/Double(phases)
+                let base=(bank*(phases+1)+phase)*count
+                var sum: Double=0
+                for tap in 0..<count {
+                    let x=Double(tap-15)-fraction
+                    let sinc=abs(x)<1e-12 ? 2*cutoff : sin(2 * Double.pi*cutoff*x)/(Double.pi*x)
+                    let window=0.42+0.5*cos(Double.pi*x/16)+0.08*cos(2 * Double.pi*x/16)
+                    let value=sinc*window
+                    result[base+tap]=Float(value); sum += value
+                }
+                for tap in 0..<count { result[base+tap] /= Float(sum) }
+            }
+        }
+        return result
+    }()
+}
+
 /// Fixed-capacity stereo storage; allocated before the render callback starts.
 final class FXStereoLine {
     private var samples: [SIMD2<Float>]
     private var cursor = 0
-    init(capacity: Int) { samples=Array(repeating:.zero,count:max(8,capacity)) }
+    init(capacity: Int) { samples=Array(repeating:.zero,count:max(40,capacity)) }
+    func readBandlimited(_ delay: Float,speed: Float) -> SIMD2<Float> {
+        let d=min(Float(samples.count-18),max(17,delay))
+        var position=Float(cursor)-d
+        if position<0 { position += Float(samples.count) }
+        let index=Int(position), fraction=position-Float(index)
+        let phasePosition=fraction*Float(FXDelayKernels.phases)
+        let phase=min(FXDelayKernels.phases-1,Int(phasePosition)), phaseMix=phasePosition-Float(phase)
+        let rate=min(48,max(1,abs(speed)))
+        var bank=0
+        while bank<FXDelayKernels.speeds.count-2 && rate>FXDelayKernels.speeds[bank+1] { bank += 1 }
+        let bankMix=(rate-FXDelayKernels.speeds[bank])/(FXDelayKernels.speeds[bank+1]-FXDelayKernels.speeds[bank])
+        let base=(bank*(FXDelayKernels.phases+1)+phase)*FXDelayKernels.count
+        let next=base+(FXDelayKernels.phases+1)*FXDelayKernels.count
+        var result=SIMD2<Float>.zero
+        var sampleIndex=index-15
+        if sampleIndex<0 { sampleIndex += samples.count }
+        let kernels=FXDelayKernels.coefficients
+        for tap in 0..<FXDelayKernels.count {
+            let a=kernels[base+tap]*(1-phaseMix)+kernels[base+32+tap]*phaseMix
+            let b=kernels[next+tap]*(1-phaseMix)+kernels[next+32+tap]*phaseMix
+            result += samples[sampleIndex]*(a+(b-a)*bankMix)
+            sampleIndex += 1
+            if sampleIndex == samples.count { sampleIndex=0 }
+        }
+        return result
+    }
     func read(_ delay: Float) -> SIMD2<Float> {
         let d=min(Float(samples.count-3),max(1,delay))
         var position=Float(cursor)-d
@@ -16,9 +69,54 @@ final class FXStereoLine {
     func write(_ value: SIMD2<Float>) { samples[cursor]=value; cursor=(cursor+1)%samples.count }
 }
 
+/// Fixed 4x polyphase interpolation / FIR decimation around the nonlinear ring.
+/// 97-tap Blackman-windowed sinc, unity DC, 24 host samples total latency.
+/// Storage and coefficients are prepared off the audio thread.
+final class FXRingOversampler {
+    static let latency = 24
+    private var input=[SIMD2<Float>](repeating:.zero,count:32)
+    private var output=[SIMD2<Float>](repeating:.zero,count:128)
+    private var taps=[Float](repeating:0,count:97)
+    private var inputCursor=0, outputCursor=0
+    init() {
+        var sum: Float=0
+        for i in 0..<97 {
+            let x=Double(i-48), cutoff=0.1125
+            let sinc=x == 0 ? 2*cutoff : sin(2 * Double.pi*cutoff*x)/(Double.pi*x)
+            let window=0.42-0.5*cos(2 * Double.pi*Double(i)/96)+0.08*cos(4 * Double.pi*Double(i)/96)
+            taps[i]=Float(sinc*window); sum += taps[i]
+        }
+        for i in taps.indices { taps[i] /= sum }
+    }
+    var alignedDry: SIMD2<Float> { input[(inputCursor-Self.latency)&31] }
+    func process(_ sample: SIMD2<Float>,carrier: inout Float,step: Float,drive: Float) -> SIMD2<Float> {
+        inputCursor=(inputCursor+1)&31
+        input[inputCursor]=sample
+        let normalization=tanhf(drive)
+        for phase in 0..<4 {
+            var up=SIMD2<Float>.zero
+            var tap=phase, age=0
+            while tap<97 {
+                up += input[(inputCursor-age)&31]*(taps[tap]*4)
+                tap += 4; age += 1
+            }
+            carrier += step/4; carrier -= floorf(carrier)
+            let shaped=SIMD2(tanhf(up.x*drive),tanhf(up.y*drive))/normalization
+            outputCursor=(outputCursor+1)&127
+            output[outputCursor]=shaped*sinf(carrier*2 * .pi)
+        }
+        // The last high-rate phase is three sub-samples after the host grid.
+        // Decimate at phase zero to keep wet and dry at exactly 24 samples.
+        var result=SIMD2<Float>.zero
+        for i in 0..<97 { result += output[(outputCursor-3-i)&127]*taps[i] }
+        return result
+    }
+}
+
 final class FXProcessor {
     let kind: EffectKind
     let sr: Float
+    private let ringOversampler: FXRingOversampler?
     private let delay: FXStereoLine
     private let pitch: FXStereoLine
     private let predelay: FXStereoLine
@@ -34,6 +132,9 @@ final class FXProcessor {
     private var damping: Float=0.2, wetGain: Float=0, envelope: Float=0
     private var settings: FXSettings
     private var initialized=false
+    private var previousReverseRead=SIMD2<Float>.zero
+    private var previousReversePhase=SIMD2<Float>(repeating:-1)
+    private var lastEchoDelay: Float?
     private var delaySamples: Float=1
     private var loop: [SIMD2<Float>] = []
     private var loopPosition: Float=0, loopLength=0, lastLoopSerial: UInt32=0
@@ -42,6 +143,8 @@ final class FXProcessor {
 
     init(kind: EffectKind,sampleRate: Float) {
         self.kind=kind; sr=sampleRate; settings=FXSettings(kind)
+        ringOversampler=kind == .ring ? FXRingOversampler():nil
+        if kind == .time || kind == .pedal || kind == .studio { _=FXDelayKernels.coefficients }
         delay=FXStereoLine(capacity:Int(sampleRate*(kind == .pedal ? 4.2:2.2))+8)
         pitch=FXStereoLine(capacity:Int(sampleRate*0.12)+8)
         predelay=FXStereoLine(capacity:Int(sampleRate*0.21)+8)
@@ -93,6 +196,12 @@ final class FXProcessor {
         default: return dry
         }
         let mix=smooth[4]*wetGain
+        if kind == .ring, let oversampler=ringOversampler {
+            // Align the dry/wet paths while engaged, then crossfade back to the
+            // un-delayed signal on bypass. Fully bypassed samples remain exact.
+            let aligned=oversampler.alignedDry
+            return dry*(1-wetGain)+(aligned*(1-smooth[4])+wet*smooth[4])*wetGain
+        }
         return dry*(1-mix)+wet*mix
     }
     private func modulation(_ input: SIMD2<Float>,studio: Bool) -> SIMD2<Float> {
@@ -123,13 +232,30 @@ final class FXProcessor {
         let modulation=studio ? smooth[1]:smooth[3]
         phase += (0.15+modulation*1.4)/sr; phase -= floorf(phase)
         let wow=sinf(phase*2 * .pi)*modulation*(mode == 1 ? 0.004:0.0008)*sr
-        var wet=delay.read(delaySamples+wow)
+        let readDelay=delaySamples+wow
+        let readSpeed=1-(readDelay-(lastEchoDelay ?? readDelay))
+        lastEchoDelay=readDelay
+        var wet=SIMD2<Float>.zero
         if mode == 4 {
             // Two overlapping reverse grains avoid a discontinuity at wrap.
             reversePhase += 1/max(32,delaySamples); reversePhase -= floorf(reversePhase)
             let q=reversePhase < 0.5 ? reversePhase+0.5:reversePhase-0.5
             let w=0.5-0.5*cosf(reversePhase*2 * .pi)
-            wet=delay.read(1+reversePhase*delaySamples*2)*w+delay.read(1+q*delaySamples*2)*(1-w)
+            let positions=SIMD2(reversePhase,q)
+            let rawDistances=1+positions*delaySamples*2
+            let distances=SIMD2(max(17,rawDistances.x),max(17,rawDistances.y))
+            var speeds=SIMD2<Float>(repeating:-1)
+            for head in 0..<2 {
+                // Grain wrap is an intentional seek at zero window gain, not
+                // a read-speed spike. Time changes within each grain are real.
+                if previousReversePhase[head]>=0 && abs(positions[head]-previousReversePhase[head])<0.5 {
+                    speeds[head]=1-(distances[head]-previousReverseRead[head])
+                }
+            }
+            previousReverseRead=distances; previousReversePhase=positions
+            wet=delay.readBandlimited(distances.x,speed:speeds.x)*w+delay.readBandlimited(distances.y,speed:speeds.y)*(1-w)
+        } else {
+            wet=delay.readBandlimited(readDelay,speed:readSpeed)
         }
         let coefficient=mode == 2 ? min(damping,0.12):damping
         filtered += (wet-filtered)*coefficient
@@ -185,10 +311,7 @@ final class FXProcessor {
         let lfo=settings.mode%2 == 0 ? sinf(phase*2 * .pi):1-4*abs(phase-0.5)
         let low=settings.mode < 2
         let frequency=(low ? 0.6*powf(80/0.6,smooth[0]):30*powf(4000/30,smooth[0]))*powf(2,lfo*smooth[2]*2)
-        carrier += min(sr*0.4,frequency)/sr; carrier -= floorf(carrier)
-        let drive=1+smooth[3]*7
-        let signal=SIMD2(tanhf(input.x*drive),tanhf(input.y*drive))/tanhf(drive)
-        return signal*sinf(carrier*2 * .pi)
+        return ringOversampler!.process(input,carrier:&carrier,step:min(sr*0.4,frequency)/sr,drive:1+smooth[3]*7)
     }
     private func looper(_ input: SIMD2<Float>) -> SIMD2<Float> {
         if loopState == 1 {

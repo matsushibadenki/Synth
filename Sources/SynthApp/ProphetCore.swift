@@ -155,12 +155,24 @@ private struct EnvelopeCoefficients {
         self.sustain = min(1,max(0,sustain))
         sustainSlew = -expm1f(-1/(0.005*sr))
     }
+    // Control-voltage edits slew at host rate. Envelope integration itself
+    // remains at the oversampled rate and retains its existing time mapping.
+    mutating func approach(_ target: Self,coefficient: Float) {
+        attack += (target.attack-attack)*coefficient
+        decay += (target.decay-decay)*coefficient
+        release += (target.release-release)*coefficient
+        sustain += (target.sustain-sustain)*coefficient
+        sustainSlew=target.sustainSlew
+    }
 }
 
 private struct AnalogEnvelope {
     enum Stage { case attack, decay, sustain, release }
     var stage: Stage = .release
-    var level: Float = 0
+    // Long time constants at 352.8/384 kHz lose timing accuracy when the
+    // capacitor is accumulated in Float. Only the DSP output is converted.
+    private var voltage: Double = 0
+    var level: Float { Float(voltage) }
     mutating func trigger() { stage = .attack } // Charge from the current capacitor level.
     mutating func advance(gate: Bool, attack: Float, decay: Float, sustain: Float, release: Float, sr: Float) {
         advance(gate:gate,coefficients:EnvelopeCoefficients(attack:attack,decay:decay,sustain:sustain,release:release,sr:sr))
@@ -169,15 +181,15 @@ private struct AnalogEnvelope {
         if !gate { stage = .release }
         switch stage {
         case .attack:
-            level += (1.3-level)*c.attack
-            if level >= 1 { level = 1; stage = .decay }
+            voltage += (1.3-voltage)*Double(c.attack)
+            if voltage >= 1 { voltage = 1; stage = .decay }
         case .decay:
-            level += (c.sustain-level)*c.decay
-            if abs(level-c.sustain) < 0.0001 { level = c.sustain; stage = .sustain }
-        case .sustain: level += (c.sustain-level)*c.sustainSlew
+            voltage += (Double(c.sustain)-voltage)*Double(c.decay)
+            if abs(voltage-Double(c.sustain)) < 0.0001 { voltage = Double(c.sustain); stage = .sustain }
+        case .sustain: voltage += (Double(c.sustain)-voltage)*Double(c.sustainSlew)
         case .release:
-            level -= level*c.release
-            if level < 0.00001 { level = 0 }
+            voltage -= voltage*Double(c.release)
+            if voltage < 0.00001 { voltage = 0 }
         }
     }
 }
@@ -198,7 +210,9 @@ struct LadderColorFilter {
         var u=(source-k*memory)/(1+k*G4)
         for _ in 0..<3 {
             let t=tanhf(source-k*(G4*u+memory))
-            u -= (u-t)/(1+k*G4*(1-t*t))
+            let next=u-(u-t)/(1+k*G4*(1-t*t))
+            if next == u { break }
+            u=next
         }
         var taps=SIMD4<Float>.zero
         for i in 0..<4 {
@@ -215,25 +229,53 @@ struct LadderColorFilter {
     }
 }
 
+// Behavioral gain staging, kept separate so input overload and VCA envelope
+// level do not share one generic waveshaper. Constants await hardware calibration.
+enum AnalogSignalPath {
+    @inline(__always) static func mixer(_ input: Float) -> Float {
+        // Unity small-signal slope before the existing 0.65 mixer/filter scaling.
+        tanhf(input*0.48)*(0.65/0.48)
+    }
+    @inline(__always) static func amplifier(_ input: Float,envelope: Float,gain: Float) -> Float {
+        // The envelope controls current before output-stage saturation. Quiet
+        // attacks/releases therefore retain more headroom than a full-level tone.
+        if envelope == 0 { return 0 }
+        let current=input*envelope*gain
+        return tanhf(current*0.35)/0.35
+    }
+}
+
 private struct CurtisFilter {
     private var state = SIMD4<Float>.zero
     mutating func process(_ input: Float, cutoff: Float, resonance: Float, sampleRate: Float) -> Float {
         let g = tanf(.pi*min(sampleRate*0.4,max(5,cutoff))/sampleRate)
-        let G = g/(1+g), G2 = G*G
-        let G3 = G2*G, G4 = G2*G2
-        let feedback = (G3*state.x+G2*state.y+G*state.z+state.w)/(1+g)
+        // Gain-cell compression is local to each pole, not just a clipper
+        // around an otherwise linear cascade. Freeze the incremental gains for
+        // this trapezoidal step, preserving the zero-delay feedback solve.
+        var G=SIMD4<Float>.zero
+        for i in 0..<4 {
+            let current=state[i]*0.55
+            let cellG=g/sqrtf(1+current*current)
+            G[i]=cellG/(1+cellG)
+        }
+        let memory=state*(SIMD4<Float>(repeating:1)-G)
+        let forward=G.x*G.y*G.z*G.w
+        let feedback=((memory.x*G.y+memory.y)*G.z+memory.z)*G.w+memory.w
         let k = min(4.5,max(0,resonance)*4.4)
-        let drive = tanhf(input*0.6)/0.6*0.65
+        let drive = AnalogSignalPath.mixer(input)
         let color: Float = 0.9
-        var u = (drive-k*feedback)/(1+k*G4)
+        var u = (drive-k*feedback)/(1+k*forward)
         // Solve the saturating feedback equation, rather than saturating the
         // result of a linear solve (which changes resonance with sample rate).
         for _ in 0..<3 {
-            let t = tanhf(color*(drive-k*(G4*u+feedback)))
-            u -= (u-t/color)/(1+k*G4*(1-t*t))
+            let t = tanhf(color*(drive-k*(forward*u+feedback)))
+            let next=u-(u-t/color)/(1+k*forward*(1-t*t))
+            // Further iterations cannot change this fixed Float result.
+            if next == u { break }
+            u=next
         }
         for i in 0..<4 {
-            let delta = (u-state[i])*G
+            let delta = (u-state[i])*G[i]
             u = state[i]+delta
             state[i] = u+delta
         }
@@ -296,16 +338,141 @@ private struct PitchGlide {
     }
 }
 
+/// A moving pulse edge traverses phase at oscillatorStep - widthStep.
+/// Using oscillator frequency alone under-corrects fast/reversing PWM edges.
+enum PWMPulse {
+    @inline(__always) static func blep(_ phase: Float,_ step: Float) -> Float {
+        guard step>0 else { return 0 }
+        if phase<step { let t=phase/step; return 2*t-t*t-1 }
+        if phase>1-step { let t=(phase-1)/step; return t*t+2*t+1 }
+        return 0
+    }
+    @inline(__always) static func heldCorrection(phase: Double,step: Float,baselineStep: Float,width: Float,widthStep: Float,
+                               mix: Float,history: inout SyncEdgeOscillator,originalPulse: Float? = nil) -> Float {
+        let end=phase/(2 * Double.pi)
+        var start=end-Double(step); start -= floor(start)
+        let held=history.sample(start:start,step:Double(step),resetFraction:nil,width:width,
+                                saw:false,pulse:true,widthStep:widthStep,widthJump:true)
+        let original=originalPulse ?? sample(phase:Float(phase)/(2 * .pi),width:width,step:baselineStep,widthStep:widthStep)
+        return (held-original)*mix
+    }
+    @inline(__always) static func sample(phase: Float,width: Float,step: Float,widthStep: Float) -> Float {
+        let pw=min(0.99,max(0.01,width))
+        let shifted=(phase-pw+1).truncatingRemainder(dividingBy:1)
+        let relativeStep=min(0.5,abs(step-widthStep))
+        return (phase<pw ? 1:-1)+blep(phase,step)-blep(shifted,relativeStep)
+    }
+}
+
+/// Two-sample polynomial BLEP at the actual fractional wrap/reset time.
+/// Both ordinary waveform edges and partial-cycle hard-sync edges are corrected.
+struct SyncEdgeOscillator {
+    private var previous: Float=0
+    // Specialized held-pulse path, optionally summed with saw, without a reset.
+    // Edge order/arithmetic match the general solver without unused reset logic.
+    @inline(__always) private mutating func heldWaveform(start: Double,step: Double,width: Float,widthStep: Float,saw: Bool) -> Float {
+        let pw=Double(min(0.99,max(0.01,width))),prior=pw-Double(widthStep)
+        let t=start-floor(start)
+        let startSaw: Float=saw ? Float(2*t-1):0
+        let jump: Float=(startSaw+(t<prior+Double(widthStep) ? 1:-1))-(startSaw+(t<prior ? 1:-1))
+        var before: Float=jump*0.5,after: Float=0
+        func edge(_ jump: Float,_ time: Double) {
+            let t=Float(min(1,max(0,time)))
+            before += jump*0.5*(1-t)*(1-t)
+            after -= jump*0.5*t*t
+        }
+        let end=start+step
+        if step>0 {
+            if end>=1 { edge((saw ? -2:0)+2,(1-start)/step) }
+            let q=start-pw,finish=q+step
+            if q<0 && finish>=0 { edge(-2,(0-q)/step) }
+            if q<1 && finish>=1 { edge(-2,(1-q)/step) }
+        }
+        let result=previous+before
+        let endPhase=end-floor(end)
+        previous=(saw ? Float(2*endPhase-1):0)+(endPhase<pw ? 1:-1)+after
+        return result
+    }
+    mutating func sample(start: Double,step: Double,resetFraction: Double?,width: Float,saw: Bool,pulse: Bool,widthStep: Float = 0,widthJump: Bool = false) -> Float {
+        if widthJump && pulse && resetFraction == nil {
+            return heldWaveform(start:start,step:step,width:width,widthStep:widthStep,saw:saw)
+        }
+        let pw=Double(min(0.99,max(0.01,width)))
+        var before: Float=0, after: Float=0
+        var priorWidth=pw-Double(widthStep)
+        var widthMotion=Double(widthStep)
+        func value(_ phase: Double,_ time: Double = 1) -> Float {
+            let t=phase-floor(phase),boundary=priorWidth+widthMotion*time
+            return (saw ? Float(2*t-1):0)+(pulse ? (t<boundary ? 1:-1):0)
+        }
+        func edge(_ jump: Float,_ time: Double) {
+            let t=Float(min(1,max(0,time)))
+            before += jump*0.5*(1-t)*(1-t)
+            after -= jump*0.5*t*t
+        }
+        func segment(_ phase: Double,_ duration: Double,_ offset: Double) {
+            guard step>0 && duration>0 else { return }
+            let end=phase+step*duration
+            if end>=1 {
+                edge((saw ? -2:0)+(pulse ? 2:0),offset+(1-phase)/step)
+            }
+            if pulse {
+                let relative=step-widthMotion
+                let q=phase-(priorWidth+widthMotion*offset)
+                let finish=q+relative*duration
+                for boundary in 0...1 {
+                    let crossing=Double(boundary)
+                    if relative>0 && q<crossing && finish>=crossing {
+                        edge(-2,offset+(crossing-q)/relative)
+                    } else if relative<0 && q>=crossing && finish<crossing {
+                        edge(2,offset+(crossing-q)/relative)
+                    }
+                }
+            }
+        }
+        if widthJump && pulse {
+            let jump=value(start,1)-value(start,0)
+            priorWidth=pw; widthMotion=0
+            edge(jump,0)
+        }
+        let end: Double
+        if let fraction=resetFraction {
+            let time=1-fraction
+            segment(start,time,0)
+            let resetPhase=start+step*time
+            edge(value(0,time)-value(resetPhase,time),time)
+            segment(0,fraction,time)
+            end=step*fraction
+        } else {
+            segment(start,1,0)
+            end=start+step
+        }
+        let result=previous+before
+        previous=value(end)+after
+        return result
+    }
+}
+
 private struct VoiceState {
     var note: Int = 60
     var active = false
     var held = false
     var age: UInt64 = 0
     var velocity: Float = 0.85
+    var cachedHzA: Float = 261.63
+    var cachedHzB: Float = 261.63
+    var cachedKeyboardTrack: Float = 0
     var targetHz: Float = 261.63
     var glideHz: Float = 261.63
     var glide = PitchGlide()
     var subPhase: Double = 0
+    var noisePulseA = SyncEdgeOscillator()
+    var noiseSyncA = SyncEdgeOscillator()
+    var noiseSourceB = SyncEdgeOscillator()
+    var noisePulseB = SyncEdgeOscillator()
+    var previousAdvanceB: Float?
+    var previousWidthA: Float?
+    var previousWidthB: Float?
     var phaseA: Double
     var phaseB: Double
     var card: VoiceCard
@@ -313,6 +480,9 @@ private struct VoiceState {
     var ampEnvelope = AnalogEnvelope()
     var filterCoefficients = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
     var ampCoefficients = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
+    var syncOscillator = SyncEdgeOscillator()
+    var filterCoefficientTarget = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
+    var ampCoefficientTarget = EnvelopeCoefficients(attack:0.01,decay:0.1,sustain:0.8,release:0.1,sr:192000)
     var filter = CurtisFilter()
     var ladderFilter = LadderColorFilter()
     var dcInput: Float = 0, dcOutput: Float = 0
@@ -343,6 +513,8 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
     private var oversampling = 4
     private var decimator = VoiceDecimator(factor:4)
     private var smoothedControls = SIMD8<Float>.zero
+    private var smoothedPolyMod = SIMD2<Float>.zero
+    private var smoothedWheelMix: Float = 0
     private var controlsInitialized = false
     private var ageCounter: UInt64 = 0
     private var rrCursor: Int = 0
@@ -383,9 +555,16 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
         sampleRateF = Float(outputBus.format.sampleRate)
         renderParameters = params.snapshot()
         effectsDSP = EffectsRackDSP(sampleRate:sampleRateF)
-        oversampling = sampleRateF <= 48000 ? 4 : (sampleRateF <= 96000 ? 2 : 1)
+        oversampling = sampleRateF <= 48000 ? 8 : (sampleRateF <= 96000 ? 4 : 2)
         decimator = VoiceDecimator(factor:oversampling)
         controlsInitialized = false
+        // A new device rate starts a new sample timeline; do not interpret the
+        // previous resource lifetime's pulse width as an audio-rate movement.
+        for i in voices.indices {
+            voices[i].previousWidthA=nil; voices[i].previousWidthB=nil; voices[i].previousAdvanceB=nil
+            voices[i].noisePulseA=SyncEdgeOscillator(); voices[i].noiseSyncA=SyncEdgeOscillator()
+            voices[i].noiseSourceB=SyncEdgeOscillator(); voices[i].noisePulseB=SyncEdgeOscillator()
+        }
     }
 
     override var internalRenderBlock: AUInternalRenderBlock {
@@ -434,7 +613,13 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
             let hostRate = self.sampleRateF
             let sr = hostRate*Float(self.oversampling)
             let controlTarget = SIMD8(p.cutoffNorm,p.resonance,p.oscALevel,p.oscBLevel,p.noiseLevel,p.oscAPulseWidth,p.oscBPulseWidth,p.filterEnvAmount)
-            if !self.controlsInitialized { self.smoothedControls = controlTarget; self.controlsInitialized = true }
+            let initializeControls = !self.controlsInitialized
+            let polyTarget=SIMD2(p.polyModFilterEnv,p.polyModOscB)
+            if initializeControls {
+                self.smoothedControls=controlTarget; self.smoothedPolyMod=polyTarget
+                self.smoothedWheelMix=p.wheelSourceMix
+                self.controlsInitialized=true
+            }
             let controlSlew = -expm1f(-1/(hostRate*0.004))
             let tuneSlew = -expm1f(-1/(hostRate*0.06))
             let dcPole = expf(-2 * .pi*5/sr)
@@ -445,17 +630,27 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
             let ratioB = powf(2,(p.oscBFrequency.rounded()-24)/12)
             let globalTune = p.masterTuneSemitones+p.pitchWheel*7
             let tuningRatio = powf(2,globalTune/12)
+            let needsGlide=p.unisonMode && p.glideTime>0
             let glideCoefficient = -expm1(-1/(Double(sr)*Double(max(0.001,p.glideTime))))
             for vi in self.voices.indices {
                 let card = self.voices[vi].card
-                self.voices[vi].filterCoefficients = EnvelopeCoefficients(
+                self.voices[vi].filterCoefficientTarget = EnvelopeCoefficients(
                     attack:p.envAAttack*card.filterTimes.x,decay:p.envADecay*card.filterTimes.y,
                     sustain:p.envASustain+card.filterSustain*p.envASustain*(1-p.envASustain),
                     release:p.releaseEnabled ? p.envARelease*card.filterTimes.z : 0.005,sr:sr)
-                self.voices[vi].ampCoefficients = EnvelopeCoefficients(
+                self.voices[vi].ampCoefficientTarget = EnvelopeCoefficients(
                     attack:p.envBAttack*card.amplifierTimes.x,decay:p.envBDecay*card.amplifierTimes.y,
                     sustain:p.envBSustain+card.amplifierSustain*p.envBSustain*(1-p.envBSustain),
                     release:p.releaseEnabled ? p.envBRelease*card.amplifierTimes.z : 0.005,sr:sr)
+                if initializeControls {
+                    self.voices[vi].filterCoefficients=self.voices[vi].filterCoefficientTarget
+                    self.voices[vi].ampCoefficients=self.voices[vi].ampCoefficientTarget
+                }
+                // RELEASE off remains an immediate fast-release command.
+                if !p.releaseEnabled {
+                    self.voices[vi].filterCoefficients.release=self.voices[vi].filterCoefficientTarget.release
+                    self.voices[vi].ampCoefficients.release=self.voices[vi].ampCoefficientTarget.release
+                }
             }
             let lfoStep = (2.0 * Double.pi * Double(max(0.04, min(20, p.lfoRateHz)))) / Double(sr)
 
@@ -467,14 +662,31 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
             self.voices.withUnsafeMutableBufferPointer { voiceBuffer in
                 for i in 0..<Int(frameCount) {
                     self.smoothedControls += (controlTarget-self.smoothedControls)*controlSlew
+                    self.smoothedPolyMod += (polyTarget-self.smoothedPolyMod)*controlSlew
+                    self.smoothedWheelMix += (p.wheelSourceMix-self.smoothedWheelMix)*controlSlew
                     let controls = self.smoothedControls
+                    let noiseAmount=min(1,max(0,self.smoothedWheelMix*p.modWheel))
+                    let noisePWMMix: Float = noiseAmount>0.000001 ? noiseAmount:0
                     self.expressionAmounts += (p.expression.amounts-self.expressionAmounts)*controlSlew
                     self.expressionPhase += 2 * .pi * p.expression.rateHz / hostRate
                     self.expressionPhase.formTruncatingRemainder(dividingBy:2 * .pi)
                     self.colorAmounts += (p.expression.colorAmounts-self.colorAmounts)*controlSlew
-                    let motion = sinf(self.expressionPhase)*self.expressionAmounts.y*0.16
+                    let expressionWave=(self.expressionAmounts.y == 0 && self.expressionAmounts.z == 0) ? 0:sinf(self.expressionPhase)
+                    let motion = expressionWave*self.expressionAmounts.y*0.16
                     for vi in voiceBuffer.indices {
+                        voiceBuffer[vi].filterCoefficients.approach(voiceBuffer[vi].filterCoefficientTarget,coefficient:controlSlew)
+                        voiceBuffer[vi].ampCoefficients.approach(voiceBuffer[vi].ampCoefficientTarget,coefficient:controlSlew)
                         voiceBuffer[vi].card.advance(seconds:1/Double(hostRate),tuneCoefficient:tuneSlew)
+                        if !needsGlide {
+                            let hz=voiceBuffer[vi].targetHz*tuningRatio
+                            let card=voiceBuffer[vi].card
+                            let a=hz*ratioA
+                            let track=p.oscBKeyboardTrack ? hz:261.6256*tuningRatio
+                            let b=p.oscBLowFreqMode ? 0.4*powf(75,p.oscBFrequency/48)*(track/261.6256):track*ratioB
+                            voiceBuffer[vi].cachedHzA=a*powf(2,(card.cents+card.scaleError*log2f(max(0.01,a)/261.6256))/1200)
+                            voiceBuffer[vi].cachedHzB=b*powf(2,(p.oscBFineCents+card.cents+card.scaleError*log2f(max(0.01,b)/261.6256))/1200)
+                            voiceBuffer[vi].cachedKeyboardTrack=p.filterKeyboardTrack ? log2f(max(0.001,hz/261.6256))/log2f(1000):0
+                        }
                     }
                     for _ in 0..<self.oversampling {
                         self.lfoPhase += lfoStep
@@ -488,7 +700,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                         // Three-pole pinking filter. The mixer retains the white source.
                         self.pink = self.pink*pinkPoles + SIMD3(repeating:white)*pinkGains
                         let pinkNoise = (self.pink.x + self.pink.y + self.pink.z + white * 0.1848) * 0.2
-                        let wheel = (lfo * (1-p.wheelSourceMix) + pinkNoise * p.wheelSourceMix) * p.modWheel
+                        let wheel = (lfo * (1-self.smoothedWheelMix) + pinkNoise * self.smoothedWheelMix) * p.modWheel
 
                         var outL: Float = 0
 
@@ -500,38 +712,77 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                             voiceBuffer[vi].glideHz = voiceBuffer[vi].glide.advance(target:glideTarget,coefficient:glideCoefficient,
                                 enabled:p.unisonMode && p.glideTime > 0)
                             let card = voiceBuffer[vi].card
-                            let trackB = p.oscBKeyboardTrack ? voiceBuffer[vi].glideHz : 261.6256*tuningRatio
-                            let baseB = p.oscBLowFreqMode ? 0.4 * powf(75, p.oscBFrequency/48) * (trackB/261.6256) : trackB * ratioB
-                            var hzB = baseB * powf(2, (p.oscBFineCents+card.cents+card.scaleError*log2f(max(0.01,baseB)/261.6256))/1200)
+                            var hzB=voiceBuffer[vi].cachedHzB
+                            if needsGlide {
+                                let trackB=p.oscBKeyboardTrack ? voiceBuffer[vi].glideHz:261.6256*tuningRatio
+                                let baseB=p.oscBLowFreqMode ? 0.4*powf(75,p.oscBFrequency/48)*(trackB/261.6256):trackB*ratioB
+                                hzB=baseB*powf(2,(p.oscBFineCents+card.cents+card.scaleError*log2f(max(0.01,baseB)/261.6256))/1200)
+                            }
                             if p.lfoToOscB { hzB *= powf(2, wheel*2) }
-                            let pwB = controls[6]+card.pulseB + (p.lfoToPWB ? wheel*0.49 : 0)
-                            let sourceB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:min(0.45,hzB/sr))
-                            let poly = p.polyModFilterEnv*voiceBuffer[vi].filterEnvelope.level + p.polyModOscB*sourceB
-                            let baseA = voiceBuffer[vi].glideHz * ratioA
-                            var hzA = baseA * powf(2,(card.cents+card.scaleError*log2f(max(0.01,baseA)/261.6256))/1200)
+                            let pwB = min(0.99,max(0.01,controls[6]+card.pulseB + (p.lfoToPWB ? wheel*0.49 : 0)))
+                            let widthStepB=pwB-(voiceBuffer[vi].previousWidthB ?? pwB)
+                            voiceBuffer[vi].previousWidthB=pwB
+                            var sourcePulseB: Float=0
+                            var sourceB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:min(0.45,hzB/sr),widthStep:widthStepB,pulseSample:&sourcePulseB)
+                            if noisePWMMix>0 && p.lfoToPWB && p.oscBPulse && self.smoothedPolyMod.y>0.000001 {
+                                let currentStep=min(0.45,hzB/sr)
+                                sourceB += PWMPulse.heldCorrection(phase:voiceBuffer[vi].phaseB,
+                                    step:voiceBuffer[vi].previousAdvanceB ?? currentStep,baselineStep:currentStep,
+                                    width:pwB,widthStep:widthStepB,mix:noisePWMMix,history:&voiceBuffer[vi].noiseSourceB,originalPulse:sourcePulseB)
+                            }
+                            let poly = self.smoothedPolyMod.x*voiceBuffer[vi].filterEnvelope.level + self.smoothedPolyMod.y*sourceB
+                            var hzA=voiceBuffer[vi].cachedHzA
+                            if needsGlide {
+                                let baseA=voiceBuffer[vi].glideHz*ratioA
+                                hzA=baseA*powf(2,(card.cents+card.scaleError*log2f(max(0.01,baseA)/261.6256))/1200)
+                            }
                             if p.polyModToFreqA { hzA *= powf(2,poly*4) }
                             if p.lfoToOscA { hzA *= powf(2,wheel*2) }
 
                             hzA = min(sr * 0.45, max(0.01, hzA))
                             hzB = min(sr * 0.45, max(0.01, hzB))
+                            voiceBuffer[vi].previousAdvanceB=hzB/sr
+                            let startPhaseA=voiceBuffer[vi].phaseA/(2 * .pi)
+                            var syncFraction: Double?
                             voiceBuffer[vi].phaseA += (2.0 * .pi * Double(hzA)) / Double(sr)
                             voiceBuffer[vi].phaseB += (2.0 * .pi * Double(hzB)) / Double(sr)
                             // B is the master; preserve the fractional time since its wrap.
                             if p.oscSync && voiceBuffer[vi].phaseB >= 2.0 * .pi {
                                 let fraction = (voiceBuffer[vi].phaseB - 2.0 * .pi) / (2.0 * .pi * Double(hzB) / Double(sr))
+                                syncFraction=fraction
                                 voiceBuffer[vi].phaseA = fraction * (2.0 * .pi * Double(hzA) / Double(sr))
                             }
                             voiceBuffer[vi].phaseA.formTruncatingRemainder(dividingBy: 2.0 * .pi)
                             voiceBuffer[vi].phaseB.formTruncatingRemainder(dividingBy: 2.0 * .pi)
 
-                            let pwA = controls[5]+card.pulseA + (p.lfoToPWA ? wheel*0.49 : 0) + (p.polyModToPWA ? poly*0.49 : 0)
-                            let oscA = self.oscillator(phase:voiceBuffer[vi].phaseA, saw:p.oscASaw, triangle:false, pulse:p.oscAPulse, width:pwA, step:hzA/sr)
-                            let oscB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:hzB/sr)
+                            let pwA = min(0.99,max(0.01,controls[5]+card.pulseA + (p.lfoToPWA ? wheel*0.49 : 0) + (p.polyModToPWA ? poly*0.49 : 0)))
+                            let widthStepA=pwA-(voiceBuffer[vi].previousWidthA ?? pwA)
+                            voiceBuffer[vi].previousWidthA=pwA
+                            let correctedA=p.oscSync ? voiceBuffer[vi].syncOscillator.sample(start:startPhaseA,step:Double(hzA/sr),
+                                resetFraction:syncFraction,width:pwA,saw:p.oscASaw,pulse:p.oscAPulse,widthStep:widthStepA) : 0
+                            var pulseA: Float=0,pulseB: Float=0
+                            var oscA = p.oscSync ? correctedA : self.oscillator(phase:voiceBuffer[vi].phaseA, saw:p.oscASaw, triangle:false, pulse:p.oscAPulse, width:pwA, step:hzA/sr,widthStep:widthStepA,pulseSample:&pulseA)
+                            var oscB = self.oscillator(phase:voiceBuffer[vi].phaseB, saw:p.oscBSaw, triangle:p.oscBTriangle, pulse:p.oscBPulse, width:pwB, step:hzB/sr,widthStep:widthStepB,pulseSample:&pulseB)
+                            if noisePWMMix>0 && p.lfoToPWA && p.oscAPulse {
+                                if p.oscSync {
+                                    let held=voiceBuffer[vi].noiseSyncA.sample(start:startPhaseA,step:Double(hzA/sr),
+                                        resetFraction:syncFraction,width:pwA,saw:p.oscASaw,pulse:true,
+                                        widthStep:widthStepA,widthJump:true)
+                                    oscA += (held-correctedA)*noisePWMMix
+                                } else {
+                                    oscA += PWMPulse.heldCorrection(phase:voiceBuffer[vi].phaseA,step:hzA/sr,baselineStep:hzA/sr,
+                                        width:pwA,widthStep:widthStepA,mix:noisePWMMix,history:&voiceBuffer[vi].noisePulseA,originalPulse:pulseA)
+                                }
+                            }
+                            if noisePWMMix>0 && p.lfoToPWB && p.oscBPulse {
+                                oscB += PWMPulse.heldCorrection(phase:voiceBuffer[vi].phaseB,step:hzB/sr,baselineStep:hzB/sr,
+                                    width:pwB,widthStep:widthStepB,mix:noisePWMMix,history:&voiceBuffer[vi].noisePulseB,originalPulse:pulseB)
+                            }
                             voiceBuffer[vi].subPhase += Double.pi * Double(min(sr*0.45,voiceBuffer[vi].glideHz)) / Double(sr)
                             voiceBuffer[vi].subPhase.formTruncatingRemainder(dividingBy:2 * .pi)
-                            let sub = sinf(Float(voiceBuffer[vi].subPhase))*self.expressionAmounts.x*0.6
+                            let sub: Float = self.expressionAmounts.x == 0 ? 0:sinf(Float(voiceBuffer[vi].subPhase))*self.expressionAmounts.x*0.6
                             let mix = oscA*controls[2] + oscB*controls[3] + white*controls[4] + sub
-                            let kbTrack = p.filterKeyboardTrack ? log2f(max(0.001,voiceBuffer[vi].glideHz/261.6256))/log2f(1000) : 0
+                            let kbTrack = needsGlide ? (p.filterKeyboardTrack ? log2f(max(0.001,voiceBuffer[vi].glideHz/261.6256))/log2f(1000):0) : voiceBuffer[vi].cachedKeyboardTrack
                             let wheelFilter = p.lfoToFilter ? wheel*0.5 : 0
                             let envFilter = controls[7]*voiceBuffer[vi].filterEnvelope.level + (p.polyModToFilter ? poly*0.5 : 0)
                             var cutoffNorm = controls[0] + kbTrack + wheelFilter + envFilter + motion + (card.filterOctaves+card.filterDrift)/log2f(1000)
@@ -549,7 +800,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                             // AC coupling removes pulse-width DC before the final VCA.
                             let coupled = filtered-voiceBuffer[vi].dcInput+dcPole*voiceBuffer[vi].dcOutput
                             voiceBuffer[vi].dcInput = filtered; voiceBuffer[vi].dcOutput = coupled
-                            let voiceOut = tanhf(coupled*0.35)/0.35*voiceBuffer[vi].ampEnvelope.level*card.amplifierGain
+                            let voiceOut = AnalogSignalPath.amplifier(coupled,envelope:voiceBuffer[vi].ampEnvelope.level,gain:card.amplifierGain)
                             outL += voiceOut
                         }
                         self.decimator.push(outL*0.18)
@@ -563,7 +814,7 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
                     }
 
                     // Linear pan preserves the mono sum and avoids a loudness jump.
-                    let pan = sinf(self.expressionPhase)*self.expressionAmounts.z
+                    let pan = expressionWave*self.expressionAmounts.z
                     let processed=self.effectsDSP.process(SIMD2(mono*(1-pan),mono*(1+pan)))
                     let volume=min(1,max(0,p.masterVolume))
                     left[i]=processed.x*volume
@@ -640,23 +891,22 @@ final class ProphetLikeAudioUnit: AUAudioUnit {
         }
     }
 
-    private func oscillator(phase: Double, saw: Bool, triangle: Bool, pulse: Bool, width: Float, step: Float) -> Float {
+    private func oscillator(phase: Double, saw: Bool, triangle: Bool, pulse: Bool, width: Float, step: Float,
+                            widthStep: Float = 0,pulseSample: inout Float) -> Float {
         let phase = Float(phase)
-        return (saw ? evalOsc(phase:phase,waveform:0,pulseWidth:width,step:step) : 0)
-        + (triangle ? evalOsc(phase:phase,waveform:1,pulseWidth:width,step:step) : 0)
-        + (pulse ? evalOsc(phase:phase,waveform:2,pulseWidth:width,step:step) : 0)
+        let a=saw ? evalOsc(phase:phase,waveform:0,pulseWidth:width,step:step):0
+        let b=triangle ? evalOsc(phase:phase,waveform:1,pulseWidth:width,step:step):0
+        pulseSample=pulse ? evalOsc(phase:phase,waveform:2,pulseWidth:width,step:step,widthStep:widthStep):0
+        return a+b+pulseSample
     }
 
-    private func evalOsc(phase: Float, waveform: Int, pulseWidth: Float, step: Float) -> Float {
+    private func evalOsc(phase: Float, waveform: Int, pulseWidth: Float, step: Float, widthStep: Float = 0) -> Float {
         switch waveform {
         case 1:
             let n = phase / (2.0 * .pi)
             return n < 0.5 ? ((n * 4.0) - 1.0) : (3.0 - (n * 4.0))
         case 2:
-            let pw = min(0.99, max(0.01, pulseWidth))
-            let t = phase / (2.0 * .pi)
-            let shifted = (t - pw + 1).truncatingRemainder(dividingBy: 1)
-            return (t < pw ? 1 : -1) + polyBLEP(t, step) - polyBLEP(shifted, step)
+            return PWMPulse.sample(phase:phase/(2 * .pi),width:pulseWidth,step:step,widthStep:widthStep)
         default:
             return (phase / .pi) - 1.0 - polyBLEP(phase / (2 * .pi), step)
         }

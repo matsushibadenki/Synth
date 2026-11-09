@@ -1,0 +1,293 @@
+{
+  "callback_interval_gt_1_25" : 0,
+  "callback_interval_max" : 1.0294307788029755,
+  "callback_interval_p99" : 1.0084069653800043,
+  "control_tick_max_ms" : 7.0370840003306512,
+  "control_ticks" : 7206,
+  "cpu_max_ms" : 2.8268330000003061,
+  "cpu_overruns" : 0,
+  "elapsed_seconds" : 120.15547204199902,
+  "gpu_completed_previews" : 3605,
+  "gpu_error" : null,
+  "gpu_preview_wall_p95_ms" : 5.4314169992721872,
+  "gpu_update_cpu_p95_ms" : 1.0157089999998092,
+  "measured_audio_seconds" : 120.00072562358277,
+  "minimum_budget_ms" : 5.8049886621315192,
+  "muted" : true,
+  "non_cpu_wall_overruns" : 0,
+  "process_cpu_seconds" : 93.503117000000003,
+  "profile" : "existing SwiftUI views + 30fps offscreen Metal preview",
+  "qos_code" : 0,
+  "render_status" : 0,
+  "requested_seconds" : 120,
+  "sample_rate" : 88200,
+  "sample_timeline_discontinuities" : 0,
+  "scope" : "AU kernel timing and timestamp continuity; interval outliers are not driver underrun counts. Excludes downstream mixer\/driver costs. Metal preview includes texture allocation\/readback.",
+  "timed_callbacks" : 20672,
+  "ui_visible_ticks" : 7206,
+  "wall_max_ms" : 2.8275000004214235,
+  "wall_overruns" : 0,
+  "wall_p95_ms" : 2.5926250000338769,
+  "wall_p99_ms" : 2.676832998986356,
+  "window_resizes" : 30,
+  "worst_callback_intervals" : [
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.318375000001538,
+      "interval_ratio" : 1.0294307788029755,
+      "time_s" : 110.0057655419987,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.3201660005724989
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.0089579999997831,
+      "interval_ratio" : 1.0263801270717465,
+      "time_s" : 7.3733172079992073,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.0098750010220101
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.1489590000012271,
+      "interval_ratio" : 1.0201282626951524,
+      "time_s" : 25.955110457998671,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.1495000000868458
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.1672920000028739,
+      "interval_ratio" : 1.0199559973251837,
+      "time_s" : 109.87220424999941,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.1681670004909392
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 1.8690000000010087,
+      "interval_ratio" : 1.0190876063276733,
+      "time_s" : 27.069663124999352,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 1.8696669994824333
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.426708000001554,
+      "interval_ratio" : 1.0189797677767842,
+      "time_s" : 78.188486207998722,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.4270000012620585
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.6243329999999787,
+      "interval_ratio" : 1.0188219728796355,
+      "time_s" : 80.835575582999809,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.6249589991493849
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.2338330000000184,
+      "interval_ratio" : 1.0178600414619154,
+      "time_s" : 28.056488958000045,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.2342499996739207
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.5008329999991474,
+      "interval_ratio" : 1.017845743331236,
+      "time_s" : 114.13885495799877,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.5018340002134209
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 1.8927089999998259,
+      "interval_ratio" : 1.0178026769104065,
+      "time_s" : 14.188354332998642,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 1.8938749999506399
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.3677499999976703,
+      "interval_ratio" : 1.017616113096409,
+      "time_s" : 111.57304637499874,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.3709580000286223
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.6139999999994501,
+      "interval_ratio" : 1.0174869138339204,
+      "time_s" : 37.001997624998694,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.6145000010728836
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.1677090000000732,
+      "interval_ratio" : 1.0168624512019164,
+      "time_s" : 27.034821249999368,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.1680829995602835
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.0703750000024002,
+      "interval_ratio" : 1.0168193847810869,
+      "time_s" : 106.08151600000019,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.0709999989776406
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.3513749999999334,
+      "interval_ratio" : 1.0167978514139975,
+      "time_s" : 19.906262749998859,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.3526250006398186
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.5254169999975318,
+      "interval_ratio" : 1.0154987965215412,
+      "time_s" : 81.95591104199957,
+      "timeline_gap_frames" : 0,
+      "wall_ms" : 2.5257500001316657
+    }
+  ],
+  "worst_callbacks" : [
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.8268330000003061,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0042009278649289,
+      "time_s" : 79.442284791999555,
+      "wall_ms" : 2.8275000004214235
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.8184159999999903,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0046243568368141,
+      "time_s" : 1.0921762079997279,
+      "wall_ms" : 2.8189999993628589
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.8177500000001743,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0037056641820641,
+      "time_s" : 36.758102457999485,
+      "wall_ms" : 2.8183750000607688
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.8156250000002103,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0003034178765802,
+      "time_s" : 36.9554490419996,
+      "wall_ms" : 2.8159579997009132
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.8088749999994889,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 0.99963588851039731,
+      "time_s" : 97.977660749998904,
+      "wall_ms" : 2.8095420002500759
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.795417000001521,
+      "gpu_overlap_count" : 1,
+      "interval_ratio" : 0.99969325337525561,
+      "time_s" : 79.465496625000014,
+      "wall_ms" : 2.7959170001849998
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.79445799999678,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0045239255511262,
+      "time_s" : 116.7742517079987,
+      "wall_ms" : 2.7950420007982757
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7942500000008863,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0028083322389136,
+      "time_s" : 36.961270332998538,
+      "wall_ms" : 2.7947920007136418
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7920409999993012,
+      "gpu_overlap_count" : 1,
+      "interval_ratio" : 1.000834685086005,
+      "time_s" : 45.00118429199938,
+      "wall_ms" : 2.7923329998884583
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7879169999991404,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0039569998127718,
+      "time_s" : 38.406724417000078,
+      "wall_ms" : 2.7884579994861269
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7850829999991333,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0013011804787197,
+      "time_s" : 44.989577416999964,
+      "wall_ms" : 2.7873330000147689
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7764579999995931,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0024782716584468,
+      "time_s" : 115.14304058299967,
+      "wall_ms" : 2.7769999996962724
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7750000000000274,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0036984289456541,
+      "time_s" : 1.2256878329990286,
+      "wall_ms" : 2.7755840001191245
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7740419999999766,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0032176354222599,
+      "time_s" : 1.1270012499990116,
+      "wall_ms" : 2.7746670002670726
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7729160000049546,
+      "gpu_overlap_count" : 0,
+      "interval_ratio" : 1.0033395994483385,
+      "time_s" : 116.59429191699928,
+      "wall_ms" : 2.7735410003515426
+    },
+    {
+      "budget_ms" : 5.8049886621315192,
+      "cpu_ms" : 2.7722080000014415,
+      "gpu_overlap_count" : 1,
+      "interval_ratio" : 0.99710944109432376,
+      "time_s" : 36.967058541998995,
+      "wall_ms" : 2.7727500000764849
+    }
+  ]
+}

@@ -166,3 +166,148 @@ Piano combines a triangle body with a narrow pulse one octave above, a short fil
 🟢 [Done] Debug build, iOS simulator type checking and offline preset tests pass: canonical schema round-trip, neutralized performance offsets, preserved master controls, piano held-note decay, violin swell, sustain and release. The held violin measured 0.050 dB P5–95 RMS span in the eight-second A4 test. Dry demos export without normalization at 48 kHz: Piano 10.8 seconds (single notes and chord), Violin 13.76 seconds (phrase and long A4). UI accessibility verified the localized preset menu; further UI reads timed out after choosing Piano.
 
 ⭕️ [Pending] End-to-end native selection/status inspection and narrow-device visual inspection, due to computer-use timeouts. Physical-device listening remains pending.
+
+
+## RING antialiasing milestone (2026-11-06)
+
+🟢 [Done] RING saturation/carrier multiplication now use fixed 4x polyphase interpolation and FIR decimation (97-tap normalized Blackman-windowed sinc, cutoff 0.1125 cycles per oversampled frame). Storage is prepared before rendering; no per-sample allocation. Latency is 24 host frames. Engaged dry/wet paths align; bypass crossfades to undelayed input and becomes sample-exact once settled. Parallel graph branches do not yet implement automatic delay compensation. Existing controls, persistence and other FX algorithms retain their interfaces.
+
+🟢 [Done] `Tests/RingAntialiasRegression.swift` compares the old 1x saturation/multiplication against 4x at normalized high-carrier and high-drive probes, checks >20dB selected alias reduction (observed 74.2/76.2dB), retained wanted sideband, channel independence, impulse alignment and exact settled bypass. These selected probes are not a universal alias rejection specification. Existing FX and AU integration regressions pass. Development-Mac realtime tests met every measured deadline across 44.1/48/96kHz, 64/128/256-frame blocks and FX on/off (1,440 post-warmup blocks).
+
+🟠 [Next] Fast-delay modulation and extreme Sync/Poly-Mod antialiasing, with quality/CPU comparisons.
+🔴 [Later] Automatic delay compensation for parallel graph paths; portable FX preset files and persistent loop storage.
+⭕️ [Pending] Physical iPhone deadline/load/dropout and listening checks; hardware comparisons.
+
+
+## Fast modulation quality milestone (2026-11-06)
+
+🟢 [Done] TIME/PEDAL delay and STUDIO echo reads use 32-tap Blackman-windowed sinc kernels, with 256 fractional phases and read-speed banks at 1/1.5/2/3/4/6/8/12/24/48x. Phase and speed banks interpolate continuously. The speed estimate is `abs(1 - deltaDelay)`; cutoffs decrease from 0.45 cycles/source sample as read speed increases. Reverse grains track each read head independently, excluding zero-window-gain wrap seeks from their speed estimate. Reads reserve 17 samples on the short side and 18 on the long side for support; no additional fixed group delay is introduced around the requested read position. Finite kernel length and bounded speed banks leave residual aliasing for extreme conditions. Tables are prepared before rendering. Other fractional-delay uses retain their original interpolation.
+
+🟢 [Done] `SyncEdgeOscillator` corrects saw/pulse wraps, pulse edges and partial-cycle reset jumps with a fractional two-sample polynomial BLEP, using one internal-sample history for sync OSC A. Non-sync waveform evaluation remains the original polyBLEP path. The full voice path oversamples by 8x through 48kHz, 4x through 96kHz and 2x above, with the existing windowed-sinc decimator and 32-host-frame FIR latency. This increases CPU cost, and neither finite-rate oversampling nor the edge correction makes all deep modulation bandlimited.
+
+🟢 [Done] `Tests/ModulationQualityRegression.swift` measures a fixed 2x delay-read alias probe (~55.9dB reduction), retained low band, normalized kernel gain over phase/speed banks, sync saw/pulse/sum magnitude-spectrum error against a 64x reference (~97–98% lower), and synthetic deep exponential modulation rate error (~65% lower at 8x versus 4x). These are algorithm probes, not hardware measurements or a universal sound-quality metric. Full FX, AU integration, voice/analog regressions and all-card long sustains passed.
+
+🟠 [Next] Reduce CPU overhead; evaluate residual aliasing under moving PWM and more extreme modulation.
+⭕️ [Pending] Physical iPhone CPU/GPU load, deadlines, dropout and listening comparisons.
+
+
+🟢 [Done] Non-gliding voices cache base A/B tuning and filter keyboard tracking once per host sample (card drift is already updated at this rate). The actual glide path retains per-internal-sample tuning. Six offline render comparisons covering sync, pulse, deep Poly-Mod, low-frequency B, disabled B tracking, Fine, unison, glide and live pitch/frequency changes produced byte-identical output hashes before/after this cache optimization.
+
+
+🟢 [Done] Final optimized build and voice/quality regressions passed. The realtime workload now includes maximum modulation depth and alternating delay times in TIME/PEDAL/STUDIO with all FX enabled. On the development Mac, every CPU-time p95 was below the corresponding deadline across 44.1/48/96kHz and 64/128/256-frame blocks with FX on/off. Wall-time deadline misses remained at 7/1,440 measured blocks, so this is not a dropout-free guarantee. The earlier RING-only milestone's zero-miss measurement is historical and does not certify this heavier workload. CPU/load stability remains Next; physical iPhone validation remains Pending.
+
+
+## Filter response / saturation milestone (2026-11-06)
+
+🟢 [Done] The existing Rev3-style four-pole feedback filter now freezes individual signal-dependent pole coefficients per trapezoidal step: `g_i = g / sqrt(1 + (0.55 * state_i)^2)`, `G_i = g_i / (1 + g_i)`. The cascade forward gain and memory feedthrough are recalculated from these four coefficients for the existing three-iteration nonlinear zero-delay feedback solve. This is a behavioral approximation of gain-cell compression, not a transistor-level or calibrated CEM3320 model. Small-signal response, resonance bass loss and bounded self-oscillation are retained; no resonance loudness compensation is added.
+
+🟢 [Done] `AnalogSignalPath.mixer` separates input headroom (`0.65 * tanh(0.48*x)/0.48`) from feedback saturation. `AnalogSignalPath.amplifier` applies envelope and card gain before `tanh(0.35*x)/0.35`, rather than multiplying a fixed-distortion signal by the envelope afterward. Small-signal scaling, post-FX user master volume, UI/branding and the program schema remain intact. Saturation coefficients are design choices awaiting hardware calibration.
+
+🟢 [Done] `Tests/FilterColorRegression.swift` covers cutoff-region resonance gain, bass loss, four-pole rejection, overload compression, self-oscillation and bounded random cutoff/input/resonance changes at 176.4/192/352.8/384kHz. Mixer H3/fundamental rises from ~0.0000077 at input amplitude 0.02 to ~0.0626 at amplitude 2; VCA H3/fundamental at input amplitude 3 falls from ~0.0722 with envelope 1 to ~0.000916 with envelope 0.1. These are software test levels, not hardware measurements. Existing voice/analog/all-card long-sustain/preset/expression/ladder/AU tests and app build pass.
+
+🟢 [Done] `Tests/FilterColorDemo.swift` generates the post-change dry single-saw/two-oscillator/resonant-sweep clip. The retained before/after WAVs use identical control sequences and one constant gain per entire clip to match overall RMS. They compare this software revision, not an actual instrument.
+
+🟠 [Next] Envelope/Poly-Mod response evaluation and CPU/deadline stability work.
+⭕️ [Pending] Matched hardware dry recordings for response/saturation calibration, controlled listening comparison and physical iPhone validation.
+
+Architectural references: [Rev3 service manual](https://www.synfo.nl/servicemanuals/Sequential/SEQUENTIAL_PROPHET-5-REV3_SERVICE_MANUAL.pdf), [original CEM3320 datasheet](https://akizukidenshi.com/goodsaffix/CEM3320.pdf). Numeric coefficients above are not specified measurements from these documents.
+
+
+🟢 [Done] Final filter-milestone realtime run on the development Mac recorded 0/1,440 wall-time deadline misses across 44.1/48/96kHz, 64/128/256 frames, FX on/off, including delay-time sweeps. This run is not evidence that the prior seven misses' root cause has been eliminated; physical iPhone and repeatability validation remain pending.
+
+
+## Envelope timing and control-response milestone (2026-11-07)
+
+🟢 [Done] `AnalogEnvelope` stores its capacitor voltage in Double and exports Float levels. This fixes accumulated rounding error at long times/high internal rates without changing the coefficient definitions: attack reaches full scale from zero at the specified duration; decay reaches 1% of its initial distance to sustain; release reaches 0.01% (−80dB) of its starting amplitude, before the existing silence threshold is applied. Retrigger retains the existing voltage. The 30s attack probe measured 30.000000–30.000021s across 44.1/48/96/352.8/384kHz.
+
+🟢 [Done] Per-voice filter/amp envelope coefficient targets are prepared per render block; the active coefficients slew once per host sample using the existing 4ms control time constant. The two Poly-Mod amounts now use the same slew. Their source waveforms and actual envelope integration retain audio/oversampled rates. Initial render/resource reallocation initializes directly to current parameters. Release off immediately assigns its existing 5ms release coefficients, preserving fast note-off. No parameter ranges, modulation endpoint depths, stored voice settings, UI or branding change.
+
+🟢 [Done] `Tests/EnvelopeControlRegression.swift` covers short and 30s attack timing, full 30s decay/release definitions, retrigger continuity, control convergence, exact 64/256-frame response agreement, initial patch state, fast Release off and knob mapping roundtrips. Voice/analog/long-sustain/preset/expression/ladder/filter/AU regressions and app build are included in validation. These test the software's current definitions, not measured hardware matching.
+
+🟠 [Next] Moving PWM/extreme modulation residual artifacts and CPU/deadline work.
+🔴 [Later] Adjustable per-voice variation with stable default tuning.
+⭕️ [Pending] Hardware recordings to calibrate envelope knob curves and Poly-Mod depth; physical iPhone validation.
+
+
+🟢 [Done] The final envelope-milestone Mac realtime probe recorded 0/1,440 deadline misses across 44.1/48/96kHz, 64/128/256-frame blocks and FX on/off. This is a development-host observation; physical iPhone performance and hardware equivalence remain pending.
+
+
+## Moving PWM boundary milestone (2026-11-07)
+
+🟢 [Done] `PWMPulse.sample` preserves the phase-wrap BLEP and corrects the moving width boundary using `min(0.5, abs(step - widthStep))`, where width deltas use the already clamped 0.01–0.99 width. Static non-sync pulses retain the old samples. Per-voice width history feeds both A/B audio evaluation and the B Poly-Mod source; resource allocation clears stale history. No additional fixed latency or oversampling stage is introduced.
+
+🟢 [Done] `SyncEdgeOscillator` uses linear width interpolation over each internal sample. Ordinary phase wrap is independent of moving-boundary crossings; crossings solve the signed relative slope for both directions, while reset jumps use the width at the fractional reset time. Its existing one-internal-sample history remains. Finite BLEP support and the correction-width cap do not fully bandlimit arbitrary noise/fast modulation.
+
+🟢 [Done] `Tests/PWMQualityRegression.swift` compares 8x squared magnitude-spectrum error against a 64x reference for fixed audio-rate PWM probes (carrier 9/128 host cycles, modulation 31/128, width depth 0.42; sync probe uses slave 29/128 and master 3/128). Errors dropped ~93.3% without sync and ~35.3% with sync relative to the old static-width correction. These are synthetic algorithm convergence probes, not hardware measurements. Tests cover static pulse identity, reversing/stationary/extreme edges, and actual AU rendering at 44.1/48/96kHz with simultaneous A Poly-Mod PWM/B wheel PWM, Sync on/off, width endpoints and resource reset. Existing voice/ADSR/preset/expression/ladder regressions and app build passed. The realtime workload includes deep Poly-Mod PWM and 20Hz wheel PWM.
+
+🟠 [Next] Residual alias evaluation for discontinuous noise modulation/extreme speeds and CPU/deadline work.
+⭕️ [Pending] Physical iPhone load/listening and matched hardware recordings.
+
+
+🟢 [Done] The final Mac realtime run with deep A Poly-Mod PWM, B wheel PWM, Sync, maximum resonance, delay-time sweeps and FX on/off recorded 0/1,440 deadline misses across the three tested sample rates and three block sizes. This remains a development-host measurement, not a physical iPhone guarantee.
+
+
+## Noise control / render-efficiency milestone (2026-11-07)
+
+🟢 [Done] Wheel-Mod source blend now uses the existing 4ms host-rate control time constant, initialized from the stored patch at resource startup. No new noise-waveform filter, depth change, UI/branding or schema change is introduced. `NoiseControlRegression.swift` covers three rates, Sync on/off, combined deep A/B PWM, source/width changes, finite output, fast release, startup and persistence.
+
+🟢 [Done] Curtis/Ladder Newton solves retain their three-iteration maximum but stop when the next Float iterate equals the current result. Zero-envelope amplifier saturation and zero-depth sub sine evaluation are skipped; expression sine is shared and omitted if both destinations have zero depth. Phase/card/filter/random updates are retained. Eight before/after source-snapshot fingerprints matched exactly for fixed source-mix settings, including idle gates, five-note chords, noise PWM, Sync/Poly-Mod, releases and expression/ladder. Source-mix edits intentionally have a new smoothed transient.
+
+🟢 [Done] Final alternating three-run medians on the development Mac, 48kHz/256 frames/300 timed blocks, were classic 0.309042→0.294879s (~4.6% reduction) and Extended+Ladder 0.477352→0.471249s (~1.3% reduction). Run variation exists; these are diagnostics, not universal speedup guarantees. The final deadline workload includes noise/LFO blend switches and delay sweeps; it recorded 0/1,440 misses across three rates, three block sizes and FX on/off. App build and modulation/envelope/voice/preset/filter/expression regressions passed.
+
+🟢 [Done] `NoisePWMQualityRegression.swift` tracks fixed-seed held-noise width spectra at 8/16/32x against a 64x reference. Current non-sync errors are approximately 0.000367/0.0000654/0.00000817; sync errors 0.000417/0.0000887/0.0000109. This quantifies finite-rate residuals and convergence; this milestone does not claim to eliminate noise-PWM aliases. The global processing rate is unchanged.
+
+🟠 [Next] Compare local discontinuous-PWM correction strategies against residual error and CPU cost.
+⭕️ [Pending] Physical iPhone load/dropout/interaction and hardware dry-recording calibration.
+
+
+## Local held-width PWM milestone (2026-11-07)
+
+🟢 [Done] `SyncEdgeOscillator.sample(widthJump: true)` applies a width-change BLEP at interval time zero, holds the new boundary within that internal sample, and handles oscillator wraps/reset jumps separately. Normal moving-boundary evaluation remains the default. `PWMPulse.heldCorrection` uses this pulse-only path for A/B and B's Poly-Mod source. Source B reconstructs its preceding phase interval from the previous actual B advance, rather than the next frequency step.
+
+🟢 [Done] Local correction is routed only for direct noise-to-PW destinations with pulse enabled and blended by clamped `smoothedWheelMix * modWheel`. Weights ≤1e−6 are skipped; B Poly-Mod correction is skipped at negligible source amount. A sync blends two one-sample-history paths; normal pulse components and B modulation acquire up to one internal sample (~2.6µs at 384kHz) in the local path. No global oversampling or FIR-latency-report change. New histories reset on resource allocation.
+
+🟢 [Done] Fixed held-noise probes at 8x against a 64x held-width reference measured squared magnitude-spectrum error 0.000477189→0.00000228630 without sync (~99.5% less) and 0.000547483→0.00000500323 with sync (~99.1% less). Both paths are compared against the same held-width reference. This is a synthetic convergence metric, not a general alias rejection or hardware calibration measurement. Nine `RenderFingerprint --noise-free` fixtures matched the prior source snapshot, including zero wheel, disabled PWM destinations and disabled pulse waveforms. AU noise-control, voice, envelope, preset, expression/ladder and modulation regressions plus app build passed.
+
+🟢 [Done] Final Mac realtime CPU p95 remained within budget in all tested conditions, while wall-time deadlines were missed in 2/1,440 blocks (44.1/48/96kHz, 64/128/256 frames, FX on/off, source-blend changes and delay sweeps). Extra local-history processing increases workload; no dropout-free guarantee is made. Dry 4.32s before/after demos use identical control sequences and one constant RMS-matching gain per clip.
+
+🟠 [Next] Mixed-source correction weighting and local-correction CPU optimization.
+⭕️ [Pending] Physical iPhone behavior/load/dropout and matched hardware calibration. README's current-roadmap section is the active priority list; earlier milestones retain their historical status/measurements.
+
+
+## Local PWM cost refinement (2026-11-07)
+
+🟢 [Done] Held pulse and saw+pulse samples with no fractional reset use an arithmetic-order-preserving specialized solver. The ordinary oscillator exports its pulse component through an internal scratch argument, and local correction consumes that component instead of evaluating the same BLEP again. Weighting, oversampling, histories, latency, UI/branding and persistence are unchanged. Fixed-patch and blend-sweep fingerprints match in 12 scenarios each; 400,000 samples match the prior general solver; 10,000 cached corrections match uncached results. Build and voice/noise/envelope/preset/expression/ladder/modulation regressions pass.
+
+🟢 [Done] Final alternating three-run noise-PWM CPU medians: classic 0.433525→0.372906s (~14.0% reduction), Extended+Ladder 0.568539→0.530757s (~6.6%), 48kHz/256 frames/300 timed blocks after 30 warmup blocks. Diagnostics are host/load dependent.
+
+🟢 [Done] Deadline instrumentation records per-block CPU budget violations and CPU maxima during wall overruns, before sorting distributions. Inherited-QoS wall overruns were 6→43 and explicit interactive diagnostic-QoS overruns 0→8 across 4,320 blocks per version per condition; CPU-budget overruns were zero throughout. CPU improvement does not establish offline wall-deadline improvement. `--interactive-qos` only affects the diagnostic process thread; production AVAudioEngine scheduling is unchanged.
+
+🟢 [Done] Opt-in `Tests/DeviceDeadlineProbe.swift --run-muted-output` invokes the AU DSP from an actual AVAudioEngine output-thread AVAudioSourceNode with synth master zero and all FX enabled. At 88.2kHz, after 20 warmups, 256 timed callbacks had 0 wall/CPU kernel overruns, maximum 2.546ms against minimum budget 5.805ms. It freezes telemetry before signaling completion; no audio is emitted. These figures exclude downstream mixer/driver costs and do not measure audible dropout events, long-run UI/GPU stress or physical iPhones.
+
+Data: `docs/performance/held-pwm-2026-11-07.json` retains all paired CPU samples and both offline scheduling conditions without replacing failed observations with later zero-overrun runs.
+
+🟠 [Next] Mixed-source weighting and long output-device runs under UI/GPU load.
+⭕️ [Pending] Physical iPhone dropout/load/interaction and matched hardware sound calibration.
+
+
+## UI/GPU負荷と描画更新 / UI/GPU load and geometry updates / UI／GPU负载与几何更新（2026-11-07）
+
+🟢 [Done] Metalの固定筐体とノブ本体を保持し、同じレイアウトでは変更した指針／スイッチ／ホイール／鍵盤だけを更新します。不可視の操作変更はアップロードを省略。GPUバッファは更新ごとにコピーし、描画中の共有領域を書き換えません。UI、SYNTH/05表記、音源、保存形式は維持。7レイアウト×12状態の画像84枚が変更前と完全一致し、キャッシュ／既存レイアウト回帰とアプリ全体のビルドを確認しました。
+
+Incremental Metal geometry retains static surfaces and patches changed controls. Invisible changes skip uploads; buffers remain copied per update to avoid in-flight writes. UI, SYNTH/05 branding, DSP and persistence stay unchanged. All 84 pixel comparisons, cache/layout regressions and the full app build pass.
+
+Metal保留固定表面，仅更新变化的控件；不可见变化跳过上传，每次更新仍复制缓冲区以避免覆盖正在绘制的数据。UI、SYNTH/05名称、音源与保存格式保持不变。84种图像像素比较、缓存／布局回归及完整应用构建通过。
+
+🟢 [Done] `Tests/UIGPUDeadlineProbe.swift` uses muted actual AVAudioEngine output, existing SwiftUI controls at 60Hz, 30fps Metal previews, and repeated 1100/740/390pt resizes. At 88.2kHz, each 120-second loaded run completed 20,672 measured callbacks and 3,605 previews. Both had zero AU-kernel wall/CPU overruns and sample-timestamp gaps (minimum budget 5.805ms). Together with two 30-second control runs: 51,680 callbacks across approximately 300 seconds. Renderer-update CPU p95 fell 2.376→1.016ms (~57.2%); process CPU per elapsed time fell ~11.9%. These are one paired host measurement, not a universal speedup guarantee.
+
+120秒の負荷試験は変更前後ともDSP期限超過を再現しませんでした。以前の小ブロックのオフライン超過が解消した根拠にはなりません。音声計測はAUカーネル内のみで、後段ミキサー／ドライバーと聴感上の音切れは対象外。コールバック間隔の外れ値はドライバーのアンダーラン数ではありません。プレビュー時間はテクスチャ作成・読戻しを含み、純粋なGPU時間ではありません。
+
+Neither loaded run reproduced kernel overruns; this does not resolve earlier offline small-block overruns. Measurements exclude downstream mixer/driver and audible dropout detection. Callback interval outliers are not driver underrun counts; preview duration includes allocation/readback rather than pure GPU execution. This synthetic component harness is not exhaustive full-app interaction or an endurance guarantee.
+
+两次负载测试均未复现音源内超时，不能据此认定此前离线小块超时已解决。测量不含后级混音／驱动与听感断音；回调间隔异常不等于驱动欠载次数，预览耗时包含分配和回读。组件模拟测试不能替代完整应用交互或长期稳定性保证。
+
+Data / 測定記録 / 测量记录: [summary and raw paired runs](docs/performance/ui-gpu-2026-11-07/summary.json).
+
+🟠 [Next] Matched-rate/block offline versus output-thread comparisons, longer runs and FX routing changes; mixed LFO/noise correction weighting.
+⭕️ [Pending] Physical iPhone load/dropout/interaction and matched hardware sound calibration.

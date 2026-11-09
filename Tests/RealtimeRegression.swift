@@ -2,6 +2,7 @@
 // Rev3Regression. Compile with the normal Debug flags (-Onone -g -O).
 // No audio device is started. Timing is diagnostic, not a universal host guarantee.
 import Dispatch
+import Darwin
 
 extension ProphetLikeAudioUnit {
     fileprivate func holdEventQueue(locked: DispatchSemaphore, release: DispatchSemaphore, done: DispatchSemaphore) {
@@ -86,6 +87,7 @@ func measureRenderDeadlines() throws {
         $0.unisonMode=true; $0.oscSync=true; $0.polyModOscB=0.7
         $0.polyModToFreqA=true; $0.polyModToFilter=true; $0.oscAPulse=true
         $0.oscBTriangle=true; $0.oscBPulse=true; $0.resonance=1
+        $0.polyModToPWA=true; $0.lfoToPWB=true; $0.modWheel=1; $0.lfoRateHz=20; $0.wheelSourceMix=1
     }
     let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(
         componentType:kAudioUnitType_Generator,componentSubType:0x50723535,
@@ -104,10 +106,25 @@ func measureRenderDeadlines() throws {
         for enabled in [false,true] {
             var document=FXDocument.initial
             for index in 1...6 { document.nodes[index].settings.enabled=enabled }
+            if enabled {
+                document.nodes[EffectKind.time.rawValue].settings.mode=1
+                document.nodes[EffectKind.pedal.rawValue].settings.mode=2
+                document.nodes[EffectKind.studio.rawValue].settings.mode=2
+                for kind in [EffectKind.time,.pedal,.studio,.ring] {
+                    document.nodes[kind.rawValue].settings.values[3]=1
+                }
+            }
             effects.set(try document.configuration())
             for frames: AUAudioFrameCount in [64,128,256] {
                 var times=[Double](), cpu=[Double]()
                 for block in 0..<100 {
+                    if enabled && block%10 == 0 {
+                        params.set { $0.wheelSourceMix=Float((block/10)%2) }
+                        for kind in [EffectKind.time,.pedal,.studio] {
+                            document.nodes[kind.rawValue].settings.values[0]=Float((block/10)%2)
+                        }
+                        effects.set(try document.configuration())
+                    }
                     let start=Date.timeIntervalSinceReferenceDate, cpuStart=cpuSeconds()
                     let status=render(&flags,&timestamp,frames,0,buffer.mutableAudioBufferList,nil,nil)
                     let elapsed=Date.timeIntervalSinceReferenceDate-start, spent=cpuSeconds()-cpuStart
@@ -118,10 +135,14 @@ func measureRenderDeadlines() throws {
                         precondition((0..<Int(frames)).allSatisfy { buffer.floatChannelData![channel][$0].isFinite })
                     }
                 }
+                let budget=Double(frames)/rate
+                let overrunCPU=zip(times,cpu).filter { $0.0>budget }.map { $0.1 }
                 times.sort(); cpu.sort()
-                let budget=Double(frames)/rate, p95=times[76], cpu95=cpu[76]
+                let p95=times[76], cpu95=cpu[76]
                 print(String(format:"%.0f Hz / %d frames / FX %@: deadline %.2f ms; wall p95 %.2f ms; CPU p95 %.2f ms; misses %d/80",
                     rate,Int(frames),enabled ? "on":"off",budget*1000,p95*1000,cpu95*1000,times.filter { $0>budget }.count))
+                print(String(format:"  CPU over budget %d/80; wall max %.3f ms; CPU max %.3f ms; wall-overrun CPU max %.3f ms",
+                    cpu.filter { $0>budget }.count,(times.last ?? 0)*1000,(cpu.last ?? 0)*1000,(overrunCPU.max() ?? 0)*1000))
             }
         }
         unit.deallocateRenderResources()
@@ -130,5 +151,12 @@ func measureRenderDeadlines() throws {
 
 checkHeldKeyStorage()
 try checkRenderNeverWaitsForUI()
+// Explicit diagnostic condition only; production AVAudioEngine scheduling is
+// owned by the host and is never changed by this test option.
+let interactiveQoS=CommandLine.arguments.contains("--interactive-qos")
+if interactiveQoS {
+    precondition(pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE,0)==0,"Could not set diagnostic thread QoS")
+}
+print("Deadline QoS: requested \(interactiveQoS ? "userInteractive":"inherited"), actual \(qos_class_self())")
 try measureRenderDeadlines()
-print("Realtime regression checks passed")
+print("Realtime behavior checks passed; deadline measurements above are diagnostic")

@@ -1,0 +1,16 @@
+{
+  "renderer_update_cpu_p95_reduction_percent": 57.24529458266099,
+  "process_cpu_per_elapsed_reduction_percent": 11.911193713263913,
+  "total_timed_callbacks": 51680,
+  "measured_audio_seconds_approx": 300,
+  "visual_comparison": "84 exact matching pixel images: 7 layouts x 12 control states",
+  "load": "60Hz control updates and existing SwiftUI views; 30fps offscreen Metal previews; window widths 1100/740/390 every 4 seconds; 5-voice unison Sync/noise PWM/resonance 1 with all FX; muted actual AVAudioEngine output",
+  "limitations": [
+    "Single paired host run; no universal performance guarantee.",
+    "120 seconds per loaded run, not an endurance guarantee.",
+    "AU kernel timing excludes downstream mixer/driver; no audible dropout or hardware underrun counter.",
+    "88.2kHz output minimum callback budget 5.805ms differs from offline small-block tests. Previous offline wall overruns remain unresolved.",
+    "Synthetic existing-view harness, not exhaustive full-app interaction. Physical iPhone tests pending."
+  ],
+  "reproduction": "Compile Tests/UIGPUDeadlineProbe.swift with its documented production dependencies using swiftc -O; pass --run-muted-output --seconds 120 --ui-gpu --report path. Compile both versions before measurement and avoid concurrent builds."
+}

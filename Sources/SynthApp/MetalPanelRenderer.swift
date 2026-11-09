@@ -140,6 +140,14 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
     private var lastNotes = Set<Int>()
     private var lastSwitches = [Bool]()
     private var layout = PanelLayout(columns: 2)
+    private var cachedVertices=[PanelVertex]()
+    private var markerRanges=[Int:Range<Int>](),switchRanges=[Int:Range<Int>]()
+    private var wheelRanges=[Int:Range<Int>](),keyRanges=[Int:Range<Int>]()
+    private var knobCenters=[SIMD4<Float>]()
+    private(set) var meshRebuildCount=0
+    private(set) var meshPatchCount=0
+    private(set) var bufferUploadCount=0
+
 
     init(device: MTLDevice) throws {
         self.device = device
@@ -167,8 +175,16 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
     func update(layout: PanelLayout, values: [Double], activeNotes: Set<Int>, switches: [Bool]) {
         guard values.count == 28, switches.count == 22 else { return }
         guard vertexBuffer == nil || self.layout != layout || lastValues != values || lastNotes != activeNotes || lastSwitches != switches else { return }
-        self.layout=layout; lastValues=values; lastNotes=activeNotes; lastSwitches=switches
         let v=values.map { Float($0.isFinite ? min(1,max(0,$0)) : 0) }
+        if vertexBuffer != nil && self.layout == layout {
+            patchControls(values:values,normalized:v,activeNotes:activeNotes,switches:switches)
+            lastValues=values;lastNotes=activeNotes;lastSwitches=switches
+            return
+        }
+        self.layout=layout; lastValues=values; lastNotes=activeNotes; lastSwitches=switches
+        markerRanges.removeAll(keepingCapacity:true);switchRanges.removeAll(keepingCapacity:true)
+        wheelRanges.removeAll(keepingCapacity:true);keyRanges.removeAll(keepingCapacity:true)
+        meshRebuildCount += 1
         var mesh=PanelMesh()
         mesh.plate([0,0,-0.18],size:[layout.width+(layout.masterVolumeOnly ? 0.4:0),layout.height+(layout.masterVolumeOnly ? 0.32:0)],radius:0.12,depth:0.18,color:PanelMaterial.chassis)
         for bank in Rev3.sections.indices where !layout.keyboardOnly && !layout.masterVolumeOnly {
@@ -195,38 +211,104 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
             }
             let a = -Float.pi*0.75-v[i] * .pi*1.5
             let n=SIMD3<Float>(cos(a),sin(a),0)
+            let markerStart=mesh.vertices.count
             mesh.line([c.x,c.y,0.367]+n*0.26,[c.x,c.y,0.367]+n*0.36,width:0.032,color:PanelMaterial.ivory)
+            markerRanges[i]=markerStart..<mesh.vertices.count
         }
         for index in Rev3.switches.indices where !layout.keyboardOnly && !layout.masterVolumeOnly {
             let c=layout.toggle(index)
+            let rangeStart=mesh.vertices.count
             mesh.plate([c.x,c.y,0.075],size:[0.58,0.24],radius:0.08,depth:0.015,color:PanelMaterial.ink)
             mesh.plate([c.x,c.y,0.09],size:[0.44,0.18],radius:0.045,depth:switches[index] ? 0.025:0.07,color:PanelMaterial.rubber)
             mesh.lathe([c.x+0.38,c.y,0.08],profile:[(0.055,0),(0.045,0.025),(0,0.03)],color:switches[index] ? PanelMaterial.light : PanelMaterial.ink,segments:24)
+            switchRanges[index]=rangeStart..<mesh.vertices.count
         }
         if layout.showsKeyboard && !layout.masterVolumeOnly {
         for index in 0..<2 {
             let w=layout.wheel(index)
             mesh.plate([w.x,w.y,0.075],size:[0.16,1.25],radius:0.065,depth:0.01,color:PanelMaterial.silver)
             mesh.plate([w.x,w.y,0.09],size:[0.1,1.2],radius:0.04,depth:0.01,color:PanelMaterial.ink)
+            let rangeStart=mesh.vertices.count
             let handle=layout.wheel(index,value:v[26+index])
             mesh.plate([handle.x,handle.y,0.13],size:[0.58,0.25],radius:0.08,depth:0.09,color:PanelMaterial.rubber)
             mesh.line([handle.x-0.2,handle.y,0.225],[handle.x+0.2,handle.y,0.225],width:0.015,color:PanelMaterial.silver)
+            wheelRanges[index]=rangeStart..<mesh.vertices.count
         }
         // Recessed keybed and felt lip belong to the enclosure, not the keys.
         let keybedCenter=(layout.keyX(0)+layout.keyX(7))/2
         mesh.plate([keybedCenter,layout.keyY,-0.01],size:[layout.keyboardWidth+0.1,1.25],radius:0.045,depth:0.04,color:PanelMaterial.keybed)
         mesh.plate([keybedCenter,layout.keyY+0.52,0.065],size:[layout.keyboardWidth,0.075],radius:0.015,depth:0.015,color:PanelMaterial.felt)
         for (i,note) in layout.whiteNotes.enumerated() {
+            let rangeStart=mesh.vertices.count
             let z: Float=activeNotes.contains(note) ? 0.025 : 0.07
             mesh.plate([layout.keyX(i),layout.keyY,z],size:[layout.keyWidth-0.025,1.0],radius:0.045,depth:0.09,color:activeNotes.contains(note) ? PanelMaterial.cyan : PanelMaterial.ivory)
+            keyRanges[note]=rangeStart..<mesh.vertices.count
         }
         for item in layout.blackNotes {
+            let rangeStart=mesh.vertices.count
             let z: Float=activeNotes.contains(item.note) ? 0.14 : 0.2
             mesh.plate([layout.keyX(item.slot)+layout.keyWidth/2,layout.keyY+0.19,z],size:[layout.keyWidth*0.56,0.63],radius:0.04,depth:0.1,color:PanelMaterial.rubber)
+            keyRanges[item.note]=rangeStart..<mesh.vertices.count
         }
         }
         vertexCount=mesh.vertices.count
-        vertexBuffer=mesh.vertices.withUnsafeBytes { device.makeBuffer(bytes:$0.baseAddress!,length:$0.count,options:.storageModeShared) }
+        cachedVertices=mesh.vertices
+        knobCenters=(0..<26).map { layout.keyboardOnly || (layout.masterVolumeOnly && $0 != 25) || (layout.omitsMasterVolume && $0 == 25) ? SIMD4<Float>(1000,1000,0,0):SIMD4<Float>(layout.knob($0),0) }
+        uploadVertices()
+    }
+    private func uploadVertices() {
+        // Each submission keeps its own GPU buffer, as before. Cached CPU
+        // vertices never overwrite resources retained by an in-flight draw.
+        vertexBuffer=cachedVertices.withUnsafeBytes { device.makeBuffer(bytes:$0.baseAddress!,length:$0.count,options:.storageModeShared) }
+        bufferUploadCount += 1
+    }
+    private func patch(_ range: Range<Int>,with mesh: PanelMesh) {
+        precondition(range.count == mesh.vertices.count)
+        cachedVertices.replaceSubrange(range,with:mesh.vertices)
+        meshPatchCount += 1
+    }
+    private func patchControls(values: [Double],normalized v: [Float],activeNotes: Set<Int>,switches: [Bool]) {
+        var changed=false
+        for i in 0..<26 where values[i] != lastValues[i] {
+            guard let range=markerRanges[i] else { continue }
+            let c=layout.knob(i),a = -Float.pi*0.75-v[i] * .pi*1.5
+            let n=SIMD3<Float>(cos(a),sin(a),0)
+            var mesh=PanelMesh()
+            mesh.line([c.x,c.y,0.367]+n*0.26,[c.x,c.y,0.367]+n*0.36,width:0.032,color:PanelMaterial.ivory)
+            patch(range,with:mesh);changed=true
+        }
+        for index in 0..<22 where switches[index] != lastSwitches[index] {
+            guard let range=switchRanges[index] else { continue }
+            let c=layout.toggle(index)
+            var mesh=PanelMesh()
+            mesh.plate([c.x,c.y,0.075],size:[0.58,0.24],radius:0.08,depth:0.015,color:PanelMaterial.ink)
+            mesh.plate([c.x,c.y,0.09],size:[0.44,0.18],radius:0.045,depth:switches[index] ? 0.025:0.07,color:PanelMaterial.rubber)
+            mesh.lathe([c.x+0.38,c.y,0.08],profile:[(0.055,0),(0.045,0.025),(0,0.03)],color:switches[index] ? PanelMaterial.light : PanelMaterial.ink,segments:24)
+            patch(range,with:mesh);changed=true
+        }
+        for index in 0..<2 where values[26+index] != lastValues[26+index] {
+            guard let range=wheelRanges[index] else { continue }
+            let handle=layout.wheel(index,value:v[26+index])
+            var mesh=PanelMesh()
+            mesh.plate([handle.x,handle.y,0.13],size:[0.58,0.25],radius:0.08,depth:0.09,color:PanelMaterial.rubber)
+            mesh.line([handle.x-0.2,handle.y,0.225],[handle.x+0.2,handle.y,0.225],width:0.015,color:PanelMaterial.silver)
+            patch(range,with:mesh);changed=true
+        }
+        for (i,note) in layout.whiteNotes.enumerated() where activeNotes.contains(note) != lastNotes.contains(note) {
+            guard let range=keyRanges[note] else { continue }
+            let z: Float=activeNotes.contains(note) ? 0.025:0.07
+            var mesh=PanelMesh()
+            mesh.plate([layout.keyX(i),layout.keyY,z],size:[layout.keyWidth-0.025,1.0],radius:0.045,depth:0.09,color:activeNotes.contains(note) ? PanelMaterial.cyan:PanelMaterial.ivory)
+            patch(range,with:mesh);changed=true
+        }
+        for item in layout.blackNotes where activeNotes.contains(item.note) != lastNotes.contains(item.note) {
+            guard let range=keyRanges[item.note] else { continue }
+            let z: Float=activeNotes.contains(item.note) ? 0.14:0.2
+            var mesh=PanelMesh()
+            mesh.plate([layout.keyX(item.slot)+layout.keyWidth/2,layout.keyY+0.19,z],size:[layout.keyWidth*0.56,0.63],radius:0.04,depth:0.1,color:PanelMaterial.rubber)
+            patch(range,with:mesh);changed=true
+        }
+        if changed { uploadVertices() }
     }
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
     func draw(in view: MTKView) {
@@ -239,8 +321,7 @@ final class MetalPanelRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(buffer,offset:0,index:0)
         var projection=SIMD4<Float>(layout.scale*layout.aspect,layout.scale,layout.height,0)
         encoder.setVertexBytes(&projection,length:MemoryLayout<SIMD4<Float>>.stride,index:1)
-        let centers=(0..<26).map { layout.keyboardOnly || (layout.masterVolumeOnly && $0 != 25) || (layout.omitsMasterVolume && $0 == 25) ? SIMD4<Float>(1000,1000,0,0):SIMD4<Float>(layout.knob($0),0) }
-        centers.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!,length:$0.count,index:0) }
+        knobCenters.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!,length:$0.count,index:0) }
         encoder.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:vertexCount)
     }
 

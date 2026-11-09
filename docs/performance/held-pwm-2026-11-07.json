@@ -1,0 +1,126 @@
+{
+  "date": "2026-11-07",
+  "environment": "Development Mac; optimized Swift; diagnostic measurements, not a device performance guarantee",
+  "production_scheduling_changed": false,
+  "cpu_benchmark": {
+    "sample_rate": 48000,
+    "frames_per_block": 256,
+    "warmup_blocks": 30,
+    "timed_blocks": 300,
+    "repetitions": 3,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "results": {
+      "before": {
+        "classic_cpu_seconds": [
+          0.415147,
+          0.54311,
+          0.433525
+        ],
+        "classic_median": 0.433525,
+        "extended_cpu_seconds": [
+          0.568539,
+          0.622828,
+          0.561887
+        ],
+        "extended_median": 0.568539
+      },
+      "after": {
+        "classic_cpu_seconds": [
+          0.372906,
+          0.383134,
+          0.351744
+        ],
+        "classic_median": 0.372906,
+        "extended_cpu_seconds": [
+          0.530757,
+          0.672281,
+          0.528857
+        ],
+        "extended_median": 0.530757
+      }
+    },
+    "median_reduction_percent": {
+      "classic": 13.982815293235685,
+      "extended": 6.645454401545015
+    }
+  },
+  "interactive_qos_deadline_diagnostic": {
+    "before": {
+      "wall_deadline_misses": 0,
+      "cpu_deadline_misses": 0,
+      "measured_blocks": 4320,
+      "qos": [
+        "requested userInteractive, actual qos_class_t(rawValue: 33)"
+      ]
+    },
+    "after": {
+      "wall_deadline_misses": 8,
+      "cpu_deadline_misses": 0,
+      "measured_blocks": 4320,
+      "qos": [
+        "requested userInteractive, actual qos_class_t(rawValue: 33)"
+      ]
+    }
+  },
+  "muted_output_device_diagnostic": {
+    "sample_rate": 88200,
+    "warmup_callbacks": 20,
+    "timed_callbacks": 256,
+    "wall_overruns": 0,
+    "cpu_overruns": 0,
+    "max_wall_ms": 2.546,
+    "max_cpu_ms": 2.546,
+    "minimum_budget_ms": 5.805,
+    "reported_qos_code": 0,
+    "method": "AU DSP rendered inside AVAudioSourceNode on an AVAudioEngine output thread; synth master volume zero",
+    "scope": "Measures the AU render kernel, not downstream mixer/driver costs, UI/GPU load or audible dropout events"
+  },
+  "equivalence": {
+    "fixed_patch_fingerprint_scenarios": 12,
+    "source_mix_sweep_fingerprint_scenarios": 12,
+    "fingerprints_match": true,
+    "held_reference_sample_comparisons": 400000,
+    "cached_correction_sample_comparisons": 10000
+  },
+  "limitations": [
+    "Inherited and interactive offline wall-time overruns remain; all recorded CPU-budget overrun counts were zero.",
+    "QoS option changes only the diagnostic thread. AVAudioEngine/application scheduling is unchanged.",
+    "The single muted device run is not a long-duration dropout or physical iPhone certification."
+  ],
+  "inherited_qos_deadline_diagnostic": {
+    "rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "block_sizes": [
+      64,
+      128,
+      256
+    ],
+    "fx_states": [
+      "off",
+      "on"
+    ],
+    "repetitions": 3,
+    "requested_qos": "inherited; class not captured in this run",
+    "results": {
+      "before": {
+        "wall_deadline_misses": 6,
+        "cpu_deadline_misses": 0,
+        "max_cpu_during_wall_overrun_ms": 1.694,
+        "measured_blocks": 4320
+      },
+      "after": {
+        "wall_deadline_misses": 43,
+        "cpu_deadline_misses": 0,
+        "max_cpu_during_wall_overrun_ms": 2.202,
+        "measured_blocks": 4320
+      }
+    }
+  }
+}
