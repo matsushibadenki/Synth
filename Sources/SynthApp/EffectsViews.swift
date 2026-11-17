@@ -17,25 +17,33 @@ enum RackTab: Int, CaseIterable, Identifiable {
         }
     }
 }
+enum WorkspaceTab: String, CaseIterable {
+    case synth = "SYNTH"
+    case fx = "FX"
+    case patch = "PATCH"
+}
+
 struct RackTabStrip: View {
-    @Binding var selection: RackTab
+    @Binding var selection: WorkspaceTab
+
     var body: some View {
-        ScrollViewReader { proxy in
-        ScrollView(.horizontal,showsIndicators:false) {
-            HStack(spacing:5) {
-                ForEach(RackTab.allCases) { tab in
-                    Button { selection=tab } label: {
-                        Label(tab.title,systemImage:tab.icon).padding(.horizontal,10).frame(height:36)
-                    }.buttonStyle(HardwareButtonStyle(selected:selection == tab))
-                        .help(tab.help).accessibilityLabel(tab.help)
-                        .accessibilityAddTraits(selection == tab ? .isSelected:[]).id(tab.id)
+        HStack(spacing: 5) {
+            ForEach(WorkspaceTab.allCases, id: \.self) { tab in
+                Button { selection = tab } label: {
+                    Text(tab.rawValue)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .padding(.horizontal, 2)
                 }
-            }.padding(.horizontal,16).padding(.vertical,8)
-        }.background(InstrumentFinish.recess)
-            .onChange(of:selection) { tab in proxy.scrollTo(tab.id,anchor:.center) }
+                .buttonStyle(HardwareButtonStyle(selected: selection == tab))
+                .accessibilityAddTraits(selection == tab ? .isSelected : [])
+            }
         }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 4)
+        .background(InstrumentFinish.recess)
     }
 }
+
 extension EffectKind {
     var finish: Color {
         switch self {

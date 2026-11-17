@@ -1,0 +1,13 @@
+Classic 5, Extended 8, retirement and 8-voice unison passed
+CPU p50 0.533 ms / p99 0.626 ms
+44100 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.732 ms, budget 1.451 ms
+CPU p50 1.040 ms / p99 1.209 ms
+44100 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.261 ms, budget 2.902 ms
+CPU p50 0.530 ms / p99 0.613 ms
+48000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.654 ms, budget 1.333 ms
+CPU p50 1.028 ms / p99 1.197 ms
+48000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.248 ms, budget 2.667 ms
+CPU p50 0.278 ms / p99 0.325 ms
+96000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.357 ms, budget 0.667 ms
+CPU p50 0.544 ms / p99 0.629 ms
+96000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.696 ms, budget 1.333 ms

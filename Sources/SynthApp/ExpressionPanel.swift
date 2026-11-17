@@ -6,7 +6,7 @@ struct ExpressionPanel: View {
     let changed: () -> Void
     @State private var showInfo=false
     private var info: String {
-        instrumentText("Extended adds a sine sub oscillator, filter motion and auto pan. SYNTH/05 bypasses these additions and retains their settings. Ladder blends a four-stage filter; Drive and Feedback add color, and slope selects 6–24 dB/oct. FX remain independent.","Extendedはサイン波サブ、フィルターの揺らぎ、オートパンを追加。SYNTH/05で追加処理を無効化し、調整値は保持します。Ladderで4段フィルターを混合。DriveとFeedbackで音に厚みを加え、傾きを6〜24dB/octで切り替えます。FXは独立して動作します。","Extended添加正弦波低音、滤波调制和自动声像。SYNTH/05旁通新增处理并保留参数，Ladder混合四级滤波，Drive与Feedback增加音色质感，可选6–24dB/oct斜率。效果独立运行。")
+        instrumentText("Extended adds a sine sub oscillator, filter motion and auto pan. SYNTH/05 bypasses these additions and retains their settings. Ladder blends a four-stage filter; Drive and Feedback add color, and slope selects 6–24 dB/oct. OSC COLOR adds waveform asymmetry and slow amplitude drift. MIX DRIVE saturates the oscillator mix before filtering. FX remain independent.","Extendedはサイン波サブ、フィルターの揺らぎ、オートパンを追加。SYNTH/05で追加処理を無効化し、調整値は保持します。Ladderで4段フィルターを混合。DriveとFeedbackで音に厚みを加え、傾きを6〜24dB/octで切り替えます。OSC COLORは波形に非対称性と緩やかな振幅の揺らぎを加えます。MIX DRIVEは発振器の混合信号をフィルター前で飽和させます。FXは独立して動作します。","Extended添加正弦波低音、滤波调制和自动声像。SYNTH/05旁通新增处理并保留参数，Ladder混合四级滤波，Drive与Feedback增加音色质感，可选6–24dB/oct斜率。OSC COLOR增加波形不对称和缓慢的振幅漂移。MIX DRIVE在滤波前对混合信号施加饱和。效果独立运行。")
     }
     var body: some View {
         VStack(spacing:10) {
@@ -31,6 +31,8 @@ struct ExpressionPanel: View {
                     knob(FXControl("MOTION","Filter motion","フィルターの揺らぎ","滤波调制"),key:\.motion)
                     knob(FXControl("RATE","Motion / pan rate","揺らぎ／パンの速度","调制／声像速率",0.05,8,"Hz"),key:\.rate)
                     knob(FXControl("AUTO PAN","Auto pan","オートパン","自动声像"),key:\.pan)
+                    knob(FXControl("OSC COLOR","Oscillator asymmetry and thermal amplitude drift","発振波形の非対称性と温度による振幅の揺らぎ","振荡波形不对称与温度引起的振幅漂移"),key:\.oscillatorColor)
+                    knob(FXControl("MIX DRIVE","Pre-filter mixer saturation","フィルター前のミキサー飽和","滤波前混音器饱和"),key:\.mixerDrive)
                 }
                 Rectangle().fill(InstrumentFinish.metalEdge).frame(height:1)
                 LazyVGrid(columns:[GridItem(.adaptive(minimum:76),spacing:8)],spacing:10) {

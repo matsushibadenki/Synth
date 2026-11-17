@@ -709,3 +709,11 @@ UNGE-inspired node headers, role badges, selection halos, ring/core ports, sourc
 🟢 [Done] `.gitignore` covers SwiftPM/Xcode build products, AU bundles, archives and per-user state while retaining sources, shared schemes, project definitions, plist/entitlements and audio preview assets. Ignore rules do not automatically untrack previously committed files.
 
 ⭕️ [Pending] Commercial DAW/physical iOS playback and session workflows; physical iPhone patch-canvas interaction and combined AU/UI/GPU endurance. Existing deadline investigation remains open; these UI/build changes do not establish a scheduling fix.
+
+## 発振器の質感 / Oscillator character / 振荡器音色
+
+🟢 [Done] Extendedの **OSC COLOR** は発振波形に軽い非対称性と、同じボイス内で共有する温度由来の振幅変動を加えます。**MIX DRIVE** はフィルター前の混合信号を穏やかに飽和させます。両方とも初期値はゼロで、既存の保存データを開いた場合もゼロになります。
+
+**OSC COLOR** adds slight waveform asymmetry and shared thermal amplitude drift within each voice. **MIX DRIVE** adds soft saturation before the filter. Both controls default to zero, including when opening older saved states.
+
+**OSC COLOR** 增加轻微的波形不对称和声部内共享的温度振幅漂移。**MIX DRIVE** 在滤波前加入软饱和。两个参数默认均为零，旧存档也以零载入。

@@ -1,0 +1,22 @@
+{
+  "sample_rate": 96000,
+  "requested_seconds": 12,
+  "muted": true,
+  "sample_time_gaps": 0,
+  "released_chord": true,
+  "device": {
+    "callbacks": 8980,
+    "cpu_max_ms": 0.7871249999999996,
+    "cpu_overruns": 0,
+    "cpu_p95_ms": 0.6985829999996973,
+    "frame_histogram": {
+      "128": 8980
+    },
+    "minimum_budget_ms": 1.3333333333333333,
+    "non_cpu_wall_overruns": 0,
+    "qos_code": 0,
+    "wall_max_ms": 0.7895419985288754,
+    "wall_overruns": 0,
+    "wall_p95_ms": 0.6996250012889504
+  }
+}

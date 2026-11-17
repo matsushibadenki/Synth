@@ -75,3 +75,42 @@ func checkLadder() throws {
 }
 try checkLadder()
 try checkExpression()
+
+func checkOscillatorColor() throws {
+    var patch = SynthParameters()
+    patch.expression.enabled = true
+    patch.expression.sub = 0
+    patch.expression.motion = 0
+    patch.expression.pan = 0
+    patch.oscAPulse = true
+    patch.oscSync = true
+
+    func render(_ patch: SynthParameters) throws -> [Float] {
+        let probe = try AudioProbe(patch)
+        probe.unit.noteOn(60, velocity: 1)
+        return probe.samples(20)
+    }
+
+    let neutral = try render(patch)
+    patch.expression.oscillatorColor = 1
+    let colored = try render(patch)
+    precondition(colored != neutral, "Oscillator color must reach the output")
+    patch.expression.oscillatorColor = 0
+    patch.expression.mixerDrive = 1
+    let driven = try render(patch)
+    precondition(driven != neutral && driven != colored, "Mixer drive must act independently")
+
+    patch.expression.oscillatorColor = 1
+    patch.expression.enabled = false
+    let bypassed = try render(patch)
+    precondition(bypassed == neutral, "Classic mode must bypass both oscillator controls")
+
+    let legacy = try JSONDecoder().decode(ExpressionParameters.self, from: Data("{}".utf8))
+    precondition(legacy.oscillatorColor == 0 && legacy.mixerDrive == 0)
+    let saved = try JSONEncoder().encode(patch.expression)
+    let recalled = try JSONDecoder().decode(ExpressionParameters.self, from: saved)
+    precondition(recalled == patch.expression)
+    print("Oscillator color, mixer drive, exact classic bypass and expression migration passed")
+}
+
+try checkOscillatorColor()

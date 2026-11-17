@@ -17,7 +17,9 @@ struct SynthApp: App {
 struct ContentView: View {
     @ObservedObject var engine: SynthEngine
     @State private var parameters = SynthParameters()
-    @State private var selectedTab: RackTab = .synth
+    @State private var selectedTab: WorkspaceTab = .synth
+    @State private var selectedEffect: RackTab = .dimension
+    @State private var programmerExpanded: Bool?
     @State private var showEditor = false
     @State private var showInfo = false
     @State private var selectedFile = 1
@@ -48,33 +50,51 @@ struct ContentView: View {
         ZStack {
             InstrumentFinish.backdrop.ignoresSafeArea()
             GeometryReader { viewport in
-            VStack(spacing:8) {
-                if viewport.size.height < 520 {
-                    ScrollView { sharedPanel(width:viewport.size.width-32) }.frame(height:max(112,(viewport.size.height-24)*0.55))
-                } else { sharedPanel(width:viewport.size.width-32) }
-                VStack(spacing:0) {
-                    RackTabStrip(selection:$selectedTab)
-                    ScrollView {
-                        VStack(spacing:0) {
-                        if selectedTab == .synth {
-                            expressionPanel
-                            InstrumentPanel(controls:controls,switches:switches,enabled:engine.isRunning,changed:apply,
-                                            onUnavailable:{showEditor=true})
-                            DisclosureGroup(isExpanded:$showEditor) {
-                                nativeEditor
-                            } label: {
-                                Label(instrumentText("Parameter editor","パラメーター編集","参数编辑"),systemImage:"slider.horizontal.3")
-                            }.font(InstrumentFinish.legend()).tint(InstrumentFinish.muted)
-                                .padding(.horizontal,16).padding(.vertical,10)
-                        } else if selectedTab == .patch {
-                            EffectsPatchView(rack:engine.effects,editEffect:openEffect)
-                        } else {
-                            EffectsWorkspace(rack:engine.effects,tab:selectedTab,openPatch:{selectedTab = .patch})
+                let width = max(1, viewport.size.width - 32)
+                let compact = width < 700 || viewport.size.height < 520
+                let expanded = programmerExpanded ?? !compact
+                VStack(spacing: 6) {
+                    toolbar(panelWidth: width, short: viewport.size.height < 420)
+                        .background(CabinetFinish())
+                    HStack(spacing: 6) {
+                        RackTabStrip(selection: $selectedTab)
+                        programmerToggle(expanded: expanded)
+                    }
+                    .padding(.horizontal, 8)
+                    .background(InstrumentFinish.recess)
+
+                    ScrollViewReader { scroll in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                Color.clear.frame(height: 0).id("workspace-start")
+                                if expanded {
+                                    ProgrammerPanel(file: $selectedFile, bank: $bank, program: $program,
+                                                    status: memoryStatus, recall: loadProgram, record: saveProgram,
+                                                    loadPreset: loadInstrumentPreset, compact: true)
+                                }
+                                workspace
+                            }
                         }
+                        .onChange(of: programmerExpanded) { _ in
+                            scroll.scrollTo("workspace-start", anchor: .top)
+                        }
+                        .onChange(of: selectedTab) { _ in
+                            scroll.scrollTo("workspace-start", anchor: .top)
+                        }
+                        .onChange(of: selectedEffect) { _ in
+                            if selectedTab == .fx {
+                                scroll.scrollTo("workspace-start", anchor: .top)
+                            }
                         }
                     }
-                }.background(CabinetFinish()).overlay(CabinetRails())
-            }.padding(.horizontal,16).padding(.vertical,12)
+                    .background(CabinetFinish())
+                    .overlay(CabinetRails())
+
+                    performanceKeyboard(width: width, height: viewport.size.height)
+                        .layoutPriority(1)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
         }
         .preferredColorScheme(.dark)
@@ -96,47 +116,119 @@ struct ContentView: View {
         }
     }
 
-    private func sharedPanel(width: CGFloat) -> some View {
-        SharedPerformancePanel(header:toolbar(panelWidth:width),file:$selectedFile,bank:$bank,program:$program,status:memoryStatus,
-                    recall:loadProgram,record:saveProgram,loadPreset:loadInstrumentPreset,controls:controls,switches:switches.map { $0.value.wrappedValue },
-                    enabled:engine.isRunning,changed:apply,noteOn:{engine.playNote($0)},noteOff:{engine.releaseNote($0)})
+    private func programmerToggle(expanded: Bool) -> some View {
+        let label = instrumentText("Programmer", "音色管理", "音色管理")
+        return Button {
+            programmerExpanded = !expanded
+        } label: {
+            Image(systemName: expanded ? "square.stack.fill" : "square.stack")
+                .frame(width: 40, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(HardwareButtonStyle(selected: expanded))
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityValue(expanded
+            ? instrumentText("Expanded", "展開済み", "已展开")
+            : instrumentText("Collapsed", "折りたたみ済み", "已折叠"))
+    }
+
+    @ViewBuilder private var workspace: some View {
+        switch selectedTab {
+        case .synth:
+            expressionPanel
+            InstrumentPanel(controls: controls, switches: switches, enabled: engine.isRunning,
+                            changed: apply, onUnavailable: { showEditor = true })
+            DisclosureGroup(isExpanded: $showEditor) {
+                nativeEditor
+            } label: {
+                Label(instrumentText("Parameter editor", "パラメーター編集", "参数编辑"),
+                      systemImage: "slider.horizontal.3")
+            }
+            .font(InstrumentFinish.legend())
+            .tint(InstrumentFinish.muted)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        case .fx:
+            Menu {
+                ForEach(RackTab.allCases.filter { $0 != .synth && $0 != .patch }) { effect in
+                    Button { selectedEffect = effect } label: {
+                        Label(effect.title, systemImage: selectedEffect == effect ? "checkmark" : effect.icon)
+                    }
+                }
+            } label: {
+                Label(selectedEffect.title, systemImage: selectedEffect.icon)
+                    .frame(minHeight: 36)
+            }
+            .accessibilityLabel(instrumentText("Effect", "エフェクト", "效果"))
+            .accessibilityValue(selectedEffect.title)
+            .padding(.horizontal, 16)
+            EffectsWorkspace(rack: engine.effects, tab: selectedEffect,
+                             openPatch: { selectedTab = .patch })
+        case .patch:
+            EffectsPatchView(rack: engine.effects, editEffect: openEffect)
+        }
+    }
+
+    private func performanceKeyboard(width: CGFloat, height: CGFloat) -> some View {
+        let availableWidth = min(720, max(1, width - 32))
+        let maxHeight = max(1, height * (height < 420 ? 0.22 : 0.27))
+        let wideLayout = PanelLayout(columns: 2, keyboardOnly: true)
+        let useWideLayout = availableWidth >= 600
+        let layout = useWideLayout ? wideLayout : PanelLayout(columns: 1, keyboardOnly: true)
+        let keyboardWidth = min(useWideLayout ? availableWidth : min(599, availableWidth),
+                                maxHeight * CGFloat(layout.aspect))
+
+        return SharedMetalKeyboard(layout: layout, controls: controls,
+                                   switches: switches.map { $0.value.wrappedValue },
+                                   enabled: engine.isRunning, changed: apply,
+                                   noteOn: { engine.playNote($0) }, noteOff: { engine.releaseNote($0) })
+            .frame(width: keyboardWidth, height: keyboardWidth / CGFloat(layout.aspect))
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+            .background(CabinetFinish())
+            .overlay(CabinetRails())
     }
 
     private func openEffect(_ kind: EffectKind) {
         switch kind {
-        case .synth: selectedTab = .synth
-        case .dimension: selectedTab = .dimension
-        case .sky, .time: selectedTab = .ambience
-        case .pedal: selectedTab = .pedal
-        case .ring: selectedTab = .ring
-        case .studio: selectedTab = .studio
-        default: break
+        case .synth:
+            selectedTab = .synth
+            return
+        case .dimension: selectedEffect = .dimension
+        case .sky, .time: selectedEffect = .ambience
+        case .pedal: selectedEffect = .pedal
+        case .ring: selectedEffect = .ring
+        case .studio: selectedEffect = .studio
+        default: return
         }
+        selectedTab = .fx
     }
 
-    private func toolbar(panelWidth: CGFloat) -> some View {
+    private func toolbar(panelWidth: CGFloat, short: Bool) -> some View {
         ViewThatFits(in:.horizontal) {
-            HStack(alignment:.center,spacing:8) { nameplate; Spacer(minLength:8); masterVolume(panelWidth:panelWidth,horizontal:true); utilityControls }
+            HStack(alignment:.center,spacing:8) { nameplate; Spacer(minLength:8); masterVolume(panelWidth:panelWidth,horizontal:true,short:short); utilityControls }
             HStack(spacing:8) {
                 VStack(alignment:.leading,spacing:4) { nameplate; utilityControls }
                 Spacer(minLength:0)
-                masterVolume(panelWidth:panelWidth,horizontal:false)
+                masterVolume(panelWidth:panelWidth,horizontal:false,short:short)
             }
         }
         .padding(.horizontal,18).padding(.vertical,6)
         .overlay(alignment:.bottom) { Rectangle().fill(InstrumentFinish.metalEdge).frame(height:1).padding(.horizontal,12) }
     }
-    private func masterVolume(panelWidth: CGFloat,horizontal: Bool) -> some View {
+    private func masterVolume(panelWidth: CGFloat,horizontal: Bool,short: Bool) -> some View {
         let layout=PanelLayout(columns:PanelLayout.columns(for:panelWidth),showsKeyboard:false)
         return MasterVolumeControl(controls:controls,switches:switches.map { $0.value.wrappedValue },
-                                   scale:panelWidth/CGFloat(layout.width+0.4),horizontal:horizontal,changed:apply)
+                                   scale:min(short ? 30 : .greatestFiniteMagnitude, panelWidth/CGFloat(layout.width+0.4)),horizontal:horizontal,changed:apply)
     }
     private var nameplate: some View {
         HStack(spacing:10) {
             PanelScrew()
             VStack(alignment:.leading,spacing:1) {
                 Text("SYNTH/05").font(InstrumentFinish.wordmark).tracking(1).foregroundStyle(InstrumentFinish.ink)
-                Text("REV 3 · 5 VOICES / 2 VCO").font(InstrumentFinish.legend(8)).tracking(0.6).foregroundStyle(InstrumentFinish.muted)
+                Text("REV 3 · \(parameters.expression.voiceLimit) VOICES / 2 VCO").font(InstrumentFinish.legend(8)).tracking(0.6).foregroundStyle(InstrumentFinish.muted)
             }.fixedSize()
         }
     }

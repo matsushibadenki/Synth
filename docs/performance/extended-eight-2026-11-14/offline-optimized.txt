@@ -1,0 +1,38 @@
+Classic 5, Extended 8, retirement and 8-voice unison passed
+Waveform fingerprint: 8235957994120821130
+CPU p50 0.577 ms / p99 0.689 ms
+44100 Hz / 64 frames: wall misses 1, CPU misses 0, silent blocks 0 / 1004, worst 1.512 ms, budget 1.451 ms
+Waveform fingerprint: 740706306768421083
+CPU p50 1.125 ms / p99 1.282 ms
+44100 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.327 ms, budget 2.902 ms
+Waveform fingerprint: 7581437816150325610
+CPU p50 0.569 ms / p99 0.659 ms
+48000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.723 ms, budget 1.333 ms
+Waveform fingerprint: 2467729013723153702
+CPU p50 1.111 ms / p99 1.297 ms
+48000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 2.024 ms, budget 2.667 ms
+Waveform fingerprint: 8773772710959925736
+CPU p50 0.322 ms / p99 0.368 ms
+96000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.385 ms, budget 0.667 ms
+Waveform fingerprint: 17679605714128861975
+CPU p50 0.632 ms / p99 1.525 ms
+96000 Hz / 128 frames: wall misses 23, CPU misses 22, silent blocks 0 / 1004, worst 1.917 ms, budget 1.333 ms
+Classic 5, Extended 8, retirement and 8-voice unison passed
+Waveform fingerprint: 8235957994120821130
+CPU p50 0.574 ms / p99 0.660 ms
+44100 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.705 ms, budget 1.451 ms
+Waveform fingerprint: 740706306768421083
+CPU p50 1.124 ms / p99 1.281 ms
+44100 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.336 ms, budget 2.902 ms
+Waveform fingerprint: 7581437816150325610
+CPU p50 0.570 ms / p99 0.654 ms
+48000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.742 ms, budget 1.333 ms
+Waveform fingerprint: 2467729013723153702
+CPU p50 1.109 ms / p99 1.293 ms
+48000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.381 ms, budget 2.667 ms
+Waveform fingerprint: 8773772710959925736
+CPU p50 0.322 ms / p99 0.369 ms
+96000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.387 ms, budget 0.667 ms
+Waveform fingerprint: 17679605714128861975
+CPU p50 0.637 ms / p99 0.726 ms
+96000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.774 ms, budget 1.333 ms

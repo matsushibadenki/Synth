@@ -250,6 +250,7 @@ enum InstrumentPreset: String, CaseIterable, Identifiable {
 
 // Separate from the original 46-setting program schema.
 struct ExpressionParameters: Codable, Equatable {
+    var voiceLimit: Int { enabled ? 8 : 5 }
     var enabled = false
     var sub: Float = 0.25
     var motion: Float = 0.2
@@ -259,8 +260,10 @@ struct ExpressionParameters: Codable, Equatable {
     var drive: Float = 0
     var feedback: Float = 0
     var slope: Float = 1
+    var oscillatorColor: Float = 0
+    var mixerDrive: Float = 0
     init(enabled: Bool = false) { self.enabled=enabled }
-    private enum CodingKeys: String, CodingKey { case enabled, sub, motion, rate, pan, ladder, drive, feedback, slope }
+    private enum CodingKeys: String, CodingKey { case enabled, sub, motion, rate, pan, ladder, drive, feedback, slope, oscillatorColor, mixerDrive }
     init(from decoder: Decoder) throws {
         let c=try decoder.container(keyedBy:CodingKeys.self)
         enabled=try c.decodeIfPresent(Bool.self,forKey:.enabled) ?? false
@@ -272,6 +275,8 @@ struct ExpressionParameters: Codable, Equatable {
         drive=try c.decodeIfPresent(Float.self,forKey:.drive) ?? 0
         feedback=try c.decodeIfPresent(Float.self,forKey:.feedback) ?? 0
         slope=try c.decodeIfPresent(Float.self,forKey:.slope) ?? 1
+        oscillatorColor=try c.decodeIfPresent(Float.self,forKey:.oscillatorColor) ?? 0
+        mixerDrive=try c.decodeIfPresent(Float.self,forKey:.mixerDrive) ?? 0
     }
     var colorAmounts: SIMD4<Float> {
         enabled ? SIMD4(Self.unit(ladder),Self.unit(drive),Self.unit(feedback),Self.unit(slope)) : SIMD4(0,0,0,Self.unit(slope))

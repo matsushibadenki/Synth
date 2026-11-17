@@ -79,3 +79,24 @@ try checkRev3Behavior()
 checkEnvelope()
 try checkRender()
 print("Audio regression checks passed")
+
+func checkFastNoteOnset() throws {
+    for unison in [false, true] {
+        var patch = SynthParameters()
+        patch.unisonMode = unison
+        patch.envBAttack = 0.001
+        patch.cutoffNorm = 0.94
+        patch.oscAPulse = true
+        let probe = try AudioProbe(patch)
+        _ = probe.samples(1)
+        probe.unit.noteOn(48, velocity: 1)
+        let samples = probe.samples(3)
+        let early = samples[32..<52]
+        let peakStep = zip(early, early.dropFirst()).map { abs($1 - $0) }.max()!
+        precondition(peakStep < 0.008, "Fast attack must not introduce a sharp onset step")
+        precondition(rms(Array(samples.suffix(256))) > 0.01, "Onset fade must reach normal level")
+    }
+    print("Fast polyphonic and unison note onsets passed")
+}
+
+try checkFastNoteOnset()

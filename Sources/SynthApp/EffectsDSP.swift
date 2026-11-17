@@ -49,6 +49,17 @@ final class FXStereoLine {
         var sampleIndex=index-15
         if sampleIndex<0 { sampleIndex += samples.count }
         let kernels=FXDelayKernels.coefficients
+        // At unity speed (and exact bank boundaries), the second
+        // interpolation has zero weight.
+        if bankMix == 0 {
+            for tap in 0..<FXDelayKernels.count {
+                let coefficient = kernels[base+tap]*(1-phaseMix)+kernels[base+32+tap]*phaseMix
+                result += samples[sampleIndex]*coefficient
+                sampleIndex += 1
+                if sampleIndex == samples.count { sampleIndex=0 }
+            }
+            return result
+        }
         for tap in 0..<FXDelayKernels.count {
             let a=kernels[base+tap]*(1-phaseMix)+kernels[base+32+tap]*phaseMix
             let b=kernels[next+tap]*(1-phaseMix)+kernels[next+32+tap]*phaseMix

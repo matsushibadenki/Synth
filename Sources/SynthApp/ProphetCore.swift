@@ -107,6 +107,7 @@ private struct VoiceCard {
     private(set) var rawPitch: Float = 0
     private(set) var cents: Float = 0
     private(set) var filterDrift: Float = 0
+    private(set) var thermalOffset: Float = 0
     private var tuneCorrection: Float = 0
     private var targetTune: Float = 0
 
@@ -144,6 +145,7 @@ private struct VoiceCard {
         tuneCorrection += (targetTune-tuneCorrection)*tuneCoefficient
         cents = rawPitch-tuneCorrection
         filterDrift = heat*0.006
+        thermalOffset = heat
     }
     mutating func tune() {
         // Capture current temperature bias; do not restart the random trajectories
@@ -206,8 +208,8 @@ struct LadderColorFilter {
     private var state = SIMD4<Float>.zero
     private var previous: Float = 0
     mutating func process(_ input: Float,cutoff: Float,resonance: Float,drive: Float,
-                          feedback: Float,slope: Float,sampleRate: Float) -> Float {
-        let g=tanf(.pi*min(sampleRate*0.2,max(5,cutoff))/sampleRate)
+                          feedback: Float,slope: Float,sampleRate: Float, sharedTangent: Float? = nil) -> Float {
+        let g = sharedTangent ?? tanf(.pi*min(sampleRate*0.2,max(5,cutoff))/sampleRate)
         let G=g/(1+g), G2=G*G, G3=G2*G, G4=G2*G2
         let memory=(G3*state.x+G2*state.y+G*state.z+state.w)/(1+g)
         let k=ExpressionParameters.unit(resonance)*3.8
@@ -253,8 +255,8 @@ enum AnalogSignalPath {
 
 private struct CurtisFilter {
     private var state = SIMD4<Float>.zero
-    mutating func process(_ input: Float, cutoff: Float, resonance: Float, sampleRate: Float) -> Float {
-        let g = tanf(.pi*min(sampleRate*0.4,max(5,cutoff))/sampleRate)
+    mutating func process(_ input: Float, cutoff: Float, resonance: Float, sampleRate: Float, sharedTangent: Float? = nil) -> Float {
+        let g = sharedTangent ?? tanf(.pi*min(sampleRate*0.4,max(5,cutoff))/sampleRate)
         // Gain-cell compression is local to each pole, not just a clipper
         // around an otherwise linear cascade. Freeze the incremental gains for
         // this trapezoidal step, preserving the zero-delay feedback solve.
@@ -469,6 +471,7 @@ private struct VoiceState {
     var age: UInt64 = 0
     var velocity: Float = 1
     var velocityGain: Float = 1
+    var onsetProgress: Float = 1
     var cachedHzA: Float = 261.63
     var cachedHzB: Float = 261.63
     var cachedKeyboardTrack: Float = 0
@@ -519,7 +522,11 @@ class ProphetLikeAudioUnit: AUAudioUnit {
     private var renderParameters = SynthParameters()
 
     private var sampleRateF: Float = 48_000
-    private var voices = (0..<5).map { VoiceState(index:$0) }
+    private var voices = (0..<8).map { VoiceState(index: $0) }
+    private var voiceLimit = 5
+    private var processingVoiceCount: Int {
+        voiceLimit == voices.count || voices[5...].contains(where: { $0.active }) ? voices.count : voiceLimit
+    }
     private var oversampling = 4
     private var decimator = VoiceDecimator(factor:4)
     private var smoothedControls = SIMD8<Float>.zero
@@ -532,6 +539,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
     private var lastAutoTuneTrigger: UInt32 = 0
     private var expressionPhase: Float = 0
     private var expressionAmounts = SIMD3<Float>.zero
+    private var oscillatorAmounts = SIMD2<Float>.zero
     private var colorAmounts = SIMD4<Float>(0,0,0,1)
     private var lfoPhase: Double = 0
     private var pink = SIMD3<Float>(repeating: 0)
@@ -576,14 +584,46 @@ class ProphetLikeAudioUnit: AUAudioUnit {
     func resetHostPerformance(clearQueue:Bool = true) {
         if clearQueue { eventLock.lock();pendingEventCount=0;pendingEventOverflow=false;eventLock.unlock() }
         heldKeys.removeAll();lastUnison=false;rrCursor=0;ageCounter=0
+        voiceLimit = 5
+        oscillatorAmounts = .zero
         for i in heldVelocities.indices { heldVelocities[i]=1 }
         for i in voices.indices { voices[i]=VoiceState(index:i) }
         decimator.reset();effectsDSP.reset();controlsInitialized=false
         lfoPhase=0;pink = .zero;referencePhase=0;expressionPhase=0
         rngState=0x1234ABCD;renderParameterOverride=nil
     }
-    func hostNoteOn(_ note:Int,velocity:Float,parameters:SynthParameters) { handleNoteOn(note,velocity:velocity,parameters:parameters) }
-    func hostNoteOff(_ note:Int,parameters:SynthParameters) { handleNoteOff(note,parameters:parameters) }
+    func hostNoteOn(_ note: Int, velocity: Float, parameters: SynthParameters) {
+        updateVoiceMode(parameters)
+        handleNoteOn(note, velocity: velocity, parameters: parameters)
+    }
+
+    func hostNoteOff(_ note: Int, parameters: SynthParameters) {
+        updateVoiceMode(parameters)
+        handleNoteOff(note, parameters: parameters)
+    }
+
+    private func updateVoiceMode(_ parameters: SynthParameters) {
+        let limit = parameters.expression.voiceLimit
+        let changedLimit = limit != voiceLimit
+        let changedUnison = parameters.unisonMode != lastUnison
+        guard changedLimit || changedUnison else { return }
+
+        voiceLimit = limit
+        rrCursor %= limit
+        lastUnison = parameters.unisonMode
+        // Retire the extra slots on a short release so a mode change cannot cut
+        // off an audible waveform at a block boundary.
+        for index in limit..<voices.count { voices[index].held = false }
+
+        if changedUnison || parameters.unisonMode {
+            for index in 0..<limit { voices[index].held = false }
+            let notes = heldKeys
+            heldKeys.removeAll()
+            for note in 0..<128 where notes.contains(note) {
+                handleNoteOn(note, velocity: heldVelocities[note], parameters: parameters)
+            }
+        }
+    }
 
     override var outputBusses: AUAudioUnitBusArray { outputBusArray }
     override var inputBusses: AUAudioUnitBusArray { inputBusArray }
@@ -597,6 +637,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
         oversampling = sampleRateF <= 48000 ? 8 : (sampleRateF <= 96000 ? 4 : 2)
         decimator = VoiceDecimator(factor:oversampling)
         controlsInitialized = false
+        oscillatorAmounts = .zero
         // A new device rate starts a new sample timeline; do not interpret the
         // previous resource lifetime's pulse width as an audio-rate movement.
         for i in voices.indices {
@@ -630,13 +671,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                 self.heldKeys.removeAll()
                 for index in self.voices.indices { self.voices[index].held = false }
             }
-            if p.unisonMode != self.lastUnison {
-                self.lastUnison = p.unisonMode
-                for i in self.voices.indices { self.voices[i].held = false }
-                let notes = self.heldKeys
-                self.heldKeys.removeAll()
-                for note in 0..<128 where notes.contains(note) { self.handleNoteOn(note, velocity: self.heldVelocities[note], parameters:p) }
-            }
+            self.updateVoiceMode(p)
             for index in 0..<eventCount {
                 let event = self.renderEvents[index]
                 if event.on { self.handleNoteOn(event.note, velocity: event.velocity, parameters:p) }
@@ -652,6 +687,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
 
             let hostRate = self.sampleRateF
             let sr = hostRate*Float(self.oversampling)
+            let cutoffNormRange: Float = log2f(1000)
             let controlTarget = SIMD8(p.cutoffNorm,p.resonance,p.oscALevel,p.oscBLevel,p.noiseLevel,p.oscAPulseWidth,p.oscBPulseWidth,p.filterEnvAmount)
             let initializeControls = !self.controlsInitialized
             let polyTarget=SIMD2(p.polyModFilterEnv,p.polyModOscB)
@@ -660,9 +696,13 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                 self.smoothedWheelMix=p.wheelSourceMix
                 self.controlsInitialized=true
             }
+            let oscillatorTarget = p.expression.enabled
+                ? SIMD2(ExpressionParameters.unit(p.expression.oscillatorColor), ExpressionParameters.unit(p.expression.mixerDrive))
+                : .zero
             let controlSlew = -expm1f(-1/(hostRate*0.004))
             let tuneSlew = -expm1f(-1/(hostRate*0.06))
             let dcPole = expf(-2 * .pi*5/sr)
+            let onsetStep: Float = 1/(sr*0.001)
             let velocitySlew = -expm1f(-1/(sr*0.001))
             let noiseGain = sqrtf(sr/48000)
             let pinkPoles = SIMD3(powf(0.99765,48000/sr),powf(0.963,48000/sr),powf(0.57,48000/sr))
@@ -673,7 +713,9 @@ class ProphetLikeAudioUnit: AUAudioUnit {
             let tuningRatio = powf(2,globalTune/12)
             let needsGlide=p.unisonMode && p.glideTime>0
             let glideCoefficient = -expm1(-1/(Double(sr)*Double(max(0.001,p.glideTime))))
-            for vi in self.voices.indices {
+            let processingCount = self.processingVoiceCount
+            let retirementRelease = -expm1f(-9.21034 / max(1, 0.005 * sr))
+            for vi in 0..<processingCount {
                 let card = self.voices[vi].card
                 self.voices[vi].filterCoefficientTarget = EnvelopeCoefficients(
                     attack:p.envAAttack*card.filterTimes.x,decay:p.envADecay*card.filterTimes.y,
@@ -688,7 +730,11 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                     self.voices[vi].ampCoefficients=self.voices[vi].ampCoefficientTarget
                 }
                 // RELEASE off remains an immediate fast-release command.
-                if !p.releaseEnabled {
+                if vi >= self.voiceLimit {
+                    self.voices[vi].filterCoefficientTarget.release = retirementRelease
+                    self.voices[vi].ampCoefficientTarget.release = retirementRelease
+                }
+                if !p.releaseEnabled || vi >= self.voiceLimit {
                     self.voices[vi].filterCoefficients.release=self.voices[vi].filterCoefficientTarget.release
                     self.voices[vi].ampCoefficients.release=self.voices[vi].ampCoefficientTarget.release
                 }
@@ -711,10 +757,18 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                     self.expressionAmounts += (p.expression.amounts-self.expressionAmounts)*controlSlew
                     self.expressionPhase += 2 * .pi * p.expression.rateHz / hostRate
                     self.expressionPhase.formTruncatingRemainder(dividingBy:2 * .pi)
+                    if self.oscillatorAmounts != oscillatorTarget {
+                        self.oscillatorAmounts += (oscillatorTarget-self.oscillatorAmounts)*controlSlew
+                        if oscillatorTarget == .zero && max(self.oscillatorAmounts.x,self.oscillatorAmounts.y)<0.000001 {
+                            self.oscillatorAmounts = .zero
+                        }
+                    }
+                    let oscillatorColor = self.oscillatorAmounts.x
+                    let mixerDrive = self.oscillatorAmounts.y
                     self.colorAmounts += (p.expression.colorAmounts-self.colorAmounts)*controlSlew
                     let expressionWave=(self.expressionAmounts.y == 0 && self.expressionAmounts.z == 0) ? 0:sinf(self.expressionPhase)
                     let motion = expressionWave*self.expressionAmounts.y*0.16
-                    for vi in voiceBuffer.indices {
+                    for vi in 0..<processingCount {
                         voiceBuffer[vi].filterCoefficients.approach(voiceBuffer[vi].filterCoefficientTarget,coefficient:controlSlew)
                         voiceBuffer[vi].ampCoefficients.approach(voiceBuffer[vi].ampCoefficientTarget,coefficient:controlSlew)
                         voiceBuffer[vi].card.advance(seconds:1/Double(hostRate),tuneCoefficient:tuneSlew)
@@ -745,7 +799,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
 
                         var outL: Float = 0
 
-                        for vi in voiceBuffer.indices {
+                        for vi in 0..<processingCount {
                             voiceBuffer[vi].filterEnvelope.advance(gate:voiceBuffer[vi].held,coefficients:voiceBuffer[vi].filterCoefficients)
                             voiceBuffer[vi].ampEnvelope.advance(gate:voiceBuffer[vi].held,coefficients:voiceBuffer[vi].ampCoefficients)
                             if !voiceBuffer[vi].held && voiceBuffer[vi].ampEnvelope.level == 0 { voiceBuffer[vi].active = false }
@@ -793,8 +847,12 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                                 syncFraction=fraction
                                 voiceBuffer[vi].phaseA = fraction * (2.0 * .pi * Double(hzA) / Double(sr))
                             }
-                            voiceBuffer[vi].phaseA.formTruncatingRemainder(dividingBy: 2.0 * .pi)
-                            voiceBuffer[vi].phaseB.formTruncatingRemainder(dividingBy: 2.0 * .pi)
+                            if voiceBuffer[vi].phaseA >= 2.0 * .pi {
+                                voiceBuffer[vi].phaseA -= 2.0 * .pi
+                            }
+                            if voiceBuffer[vi].phaseB >= 2.0 * .pi {
+                                voiceBuffer[vi].phaseB -= 2.0 * .pi
+                            }
 
                             let pwA = min(0.99,max(0.01,controls[5]+card.pulseA + (p.lfoToPWA ? wheel*0.49 : 0) + (p.polyModToPWA ? poly*0.49 : 0)))
                             let widthStepA=pwA-(voiceBuffer[vi].previousWidthA ?? pwA)
@@ -820,22 +878,41 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                                     width:pwB,widthStep:widthStepB,mix:noisePWMMix,history:&voiceBuffer[vi].noisePulseB,originalPulse:pulseB)
                             }
                             voiceBuffer[vi].subPhase += Double.pi * Double(min(sr*0.45,voiceBuffer[vi].glideHz)) / Double(sr)
-                            voiceBuffer[vi].subPhase.formTruncatingRemainder(dividingBy:2 * .pi)
+                            if voiceBuffer[vi].subPhase >= 2.0 * .pi {
+                                voiceBuffer[vi].subPhase -= 2.0 * .pi
+                            }
                             let sub: Float = self.expressionAmounts.x == 0 ? 0:sinf(Float(voiceBuffer[vi].subPhase))*self.expressionAmounts.x*0.6
-                            let mix = oscA*controls[2] + oscB*controls[3] + white*controls[4] + sub
+                            if oscillatorColor > 0 {
+                                let color = oscillatorColor
+                                let commonGain = 1 + color*card.thermalOffset*0.012
+                                // Apply asymmetry to the corrected audio waves. Poly-Mod
+                                // and the hard-sync and PWM edge solvers keep their inputs.
+                                oscA = (oscA + color*(0.075 + card.pulseA*8)*oscA*oscA)*commonGain
+                                oscB = (oscB + color*(0.060 + card.pulseB*8)*oscB*oscB)*commonGain
+                            }
+                            var mix = oscA*controls[2] + oscB*controls[3] + white*controls[4] + sub
+                            if mixerDrive > 0 {
+                                // Smooth compression with unity slope at zero.
+                                mix /= sqrtf(1 + mixerDrive*0.18*mix*mix)
+                            }
                             let kbTrack = needsGlide ? (p.filterKeyboardTrack ? log2f(max(0.001,voiceBuffer[vi].glideHz/261.6256))/log2f(1000):0) : voiceBuffer[vi].cachedKeyboardTrack
                             let wheelFilter = p.lfoToFilter ? wheel*0.5 : 0
                             let envFilter = controls[7]*voiceBuffer[vi].filterEnvelope.level + (p.polyModToFilter ? poly*0.5 : 0)
-                            var cutoffNorm = controls[0] + kbTrack + wheelFilter + envFilter + motion + (card.filterOctaves+card.filterDrift)/log2f(1000)
+                            var cutoffNorm = controls[0] + kbTrack + wheelFilter + envFilter + motion + (card.filterOctaves+card.filterDrift)/cutoffNormRange
                             cutoffNorm = min(0.99, max(0.001, cutoffNorm))
                             let cutoffHz = 20.0 * powf(1000.0, cutoffNorm)
+                            // Below the ladder's cutoff cap both filters use the same
+                            // trapezoidal coefficient, with identical Float arithmetic.
+                            let ladderEnabled = self.colorAmounts.x > 0.000001
+                            let sharedTangent = ladderEnabled && cutoffHz <= sr*0.2
+                                ? tanf(.pi*max(5,cutoffHz)/sr) : nil
                             var filtered = voiceBuffer[vi].filter.process(mix+white*0.0000001,cutoff:cutoffHz,
-                                resonance:controls[1]*card.resonanceGain,sampleRate:sr)
-                            if self.colorAmounts.x > 0.000001 {
+                                resonance:controls[1]*card.resonanceGain,sampleRate:sr,sharedTangent:sharedTangent)
+                            if ladderEnabled {
                                 let color=voiceBuffer[vi].ladderFilter.process(mix+white*0.0000001,
                                     cutoff:cutoffHz,resonance:controls[1]*card.resonanceGain,
                                     drive:self.colorAmounts.y,feedback:self.colorAmounts.z,
-                                    slope:self.colorAmounts.w,sampleRate:sr)
+                                    slope:self.colorAmounts.w,sampleRate:sr,sharedTangent:sharedTangent)
                                 filtered += (color-filtered)*self.colorAmounts.x
                             }
                             // AC coupling removes pulse-width DC before the final VCA.
@@ -848,7 +925,14 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                                 voiceBuffer[vi].velocityGain = abs(delta)<0.000001 ? voiceBuffer[vi].velocity:
                                     voiceBuffer[vi].velocityGain+delta*velocitySlew
                             }
-                            outL += voiceOut*voiceBuffer[vi].velocityGain
+                            var gain = voiceBuffer[vi].velocityGain
+                            let onset = voiceBuffer[vi].onsetProgress
+                            if onset < 1 {
+                                // Start continuously at zero even with a very fast VCA attack.
+                                gain *= onset*onset*(3-2*onset)
+                                voiceBuffer[vi].onsetProgress = min(1,onset+onsetStep)
+                            }
+                            outL += voiceOut*gain
                         }
                         self.decimator.push(outL*0.18)
                     }
@@ -904,15 +988,15 @@ class ProphetLikeAudioUnit: AUAudioUnit {
         ageCounter &+= 1
 
         var slot: Int? = nil
-        for offset in 0..<voices.count {
-            let idx = (rrCursor + offset) % voices.count
+        for offset in 0..<voiceLimit {
+            let idx = (rrCursor + offset) % voiceLimit
             if !voices[idx].active {
                 slot = idx
-                rrCursor = (idx + 1) % voices.count
+                rrCursor = (idx + 1) % voiceLimit
                 break
             }
         }
-        if slot == nil { slot = voices.indices.min { voices[$0].age < voices[$1].age } }
+        if slot == nil { slot = (0..<voiceLimit).min { voices[$0].age < voices[$1].age } }
         guard let idx = slot else { return }
         let wasActive = voices[idx].active
 
@@ -925,6 +1009,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
         voices[idx].velocity = min(1.0, max(0.0, velocity))
         voices[idx].targetHz = hz
         if !wasActive {
+            voices[idx].onsetProgress = 0
             voices[idx].velocityGain=voices[idx].velocity
             voices[idx].glideHz = hz; voices[idx].glide.reset(hz)
         }
@@ -998,7 +1083,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
     }
 
     private func noteOnUnison(midi: Int, hz: Float, velocity: Float) {
-        for i in voices.indices {
+        for i in 0..<voiceLimit {
             ageCounter &+= 1
             let wasActive = voices[i].active
             voices[i].note = midi
@@ -1010,6 +1095,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
             voices[i].velocity = min(1.0, max(0.0, velocity))
             voices[i].targetHz = hz
             if !wasActive {
+                voices[i].onsetProgress = 0
                 voices[i].velocityGain=voices[i].velocity
                 voices[i].glideHz = voices[i].targetHz; voices[i].glide.reset(hz)
             }
