@@ -122,7 +122,7 @@ func checkDecimation() {
 // oscillator implementation, to guard the silent-voice/free-running behavior.
 extension ProphetLikeAudioUnit {
     fileprivate var probeLFOPhase: Double { lfoPhase }
-    fileprivate var probePhases: [Float] { voices.map { Float($0.phaseA) } }
+    fileprivate var probePhases: [Float] { voices.prefix(5).map { Float($0.phaseA) } }
 }
 func checkFreeRunningAndPerformance() throws {
     var p=SynthParameters()
@@ -238,3 +238,40 @@ try checkFreeRunningAndPerformance()
 try checkSustainBeating()
 try checkLongSustain()
 print("Analog regression checks passed")
+
+// Reference-analysis refinements must preserve timing, low-level gain and
+// overload monotonicity, rather than merely matching waveshaper constants.
+func checkReferenceToneRefinements() {
+    for sr: Float in [44100, 96000, 384000] {
+        for seconds: Float in [0.001, 0.05, 1, 30] {
+            let c = EnvelopeCoefficients(attack:seconds,decay:0.1,sustain:0.5,release:0.2,sr:sr)
+            var env = AnalogEnvelope()
+            env.trigger()
+            let halfway = Int(seconds*sr*0.5)
+            var count = 0
+            while env.stage == .attack {
+                env.advance(gate:true,coefficients:c)
+                count += 1
+                if count == halfway && halfway > 0 {
+                    let expected = EnvelopeShape.attackTarget * (1 - exp(-Double(EnvelopeShape.attackRate)*Double(count)/Double(seconds*sr)))
+                    precondition(abs(Double(env.level)-expected)<0.00001)
+                }
+                precondition(count < Int(seconds*sr)+4)
+            }
+            precondition(abs(Float(count)-seconds*sr)<2,"Attack curvature must retain knob timing")
+        }
+    }
+    var previous: Float = -2
+    for index in -10000...10000 {
+        let value = AnalogSignalPath.mixer(Float(index)*0.01)
+        precondition(value.isFinite && abs(value)<1.4)
+        precondition(value>=previous,"Overload transfer must never fold backwards")
+        previous = value
+    }
+    precondition(AnalogSignalPath.mixer(0)==0)
+    precondition(abs(AnalogSignalPath.mixer(0.0001)/0.0001-0.65)<0.00001)
+    let even = AnalogSignalPath.mixer(1)+AnalogSignalPath.mixer(-1)
+    precondition(even>0.01 && even<0.03,"Mixer should add restrained even harmonics")
+    print("Reference tone: attack timing/curvature at three rates, bounded monotonic mixer and even-order color passed")
+}
+checkReferenceToneRefinements()

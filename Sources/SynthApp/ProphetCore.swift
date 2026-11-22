@@ -154,10 +154,17 @@ private struct VoiceCard {
     }
 }
 
+// Behavioral attack curvature; normalize the RC rate so the knob still measures
+// time to the comparator threshold, not the unreachable charging target.
+private enum EnvelopeShape {
+    static let attackTarget: Double = 1.26
+    static let attackRate = Float(log(attackTarget / (attackTarget - 1)))
+}
+
 private struct EnvelopeCoefficients {
     var attack: Float, decay: Float, release: Float, sustain: Float, sustainSlew: Float
     init(attack: Float, decay: Float, sustain: Float, release: Float, sr: Float) {
-        self.attack = -expm1f(-1.466337 / max(1,attack*sr))
+        self.attack = -expm1f(-EnvelopeShape.attackRate / max(1,attack*sr))
         self.decay = -expm1f(-4.60517 / max(1,decay*sr))
         self.release = -expm1f(-9.21034 / max(1,release*sr))
         self.sustain = min(1,max(0,sustain))
@@ -189,7 +196,7 @@ private struct AnalogEnvelope {
         if !gate { stage = .release }
         switch stage {
         case .attack:
-            voltage += (1.3-voltage)*Double(c.attack)
+            voltage += (EnvelopeShape.attackTarget-voltage)*Double(c.attack)
             if voltage >= 1 { voltage = 1; stage = .decay }
         case .decay:
             voltage += (Double(c.sustain)-voltage)*Double(c.decay)
@@ -242,7 +249,10 @@ struct LadderColorFilter {
 enum AnalogSignalPath {
     @inline(__always) static func mixer(_ input: Float) -> Float {
         // Unity small-signal slope before the existing 0.65 mixer/filter scaling.
-        tanhf(input*0.48)*(0.65/0.48)
+        let saturated = tanhf(input*0.48)
+        // Bounded even-order color preserves the zero crossing and small-signal
+        // gain. Unlike a quadratic input term, this cannot fold at large inputs.
+        return (saturated + 0.03*saturated*saturated)*(0.65/0.48)
     }
     @inline(__always) static func amplifier(_ input: Float,envelope: Float,gain: Float) -> Float {
         // The envelope controls current before output-stage saturation. Quiet
@@ -271,7 +281,9 @@ private struct CurtisFilter {
         let feedback=((memory.x*G.y+memory.y)*G.z+memory.z)*G.w+memory.w
         let k = min(4.5,max(0,resonance)*4.4)
         let drive = AnalogSignalPath.mixer(input)
-        let color: Float = 0.9
+        // More feedback drive gives gently stronger compression at resonance.
+        // Keep feedback gain/self-oscillation range and bass loss unchanged.
+        let color: Float = 0.9 + min(1,max(0,resonance))*0.08
         var u = (drive-k*feedback)/(1+k*forward)
         // Solve the saturating feedback equation, rather than saturating the
         // result of a linear solve (which changes resonance with sample rate).

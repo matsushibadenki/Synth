@@ -1,0 +1,7 @@
+Rev3 schema: exactly 24 pots + 22 switches; recall preserves performance controls
+Rev3 behavior: wave sums, velocity gain, low-note priority, release, noise/PWM routes and A-440 passed
+Render passed: 44100 Hz, peak 0.29763964
+Render passed: 48000 Hz, peak 0.26692912
+Render passed: 96000 Hz, peak 0.31555486
+Audio regression checks passed
+Fast polyphonic and unison note onsets passed

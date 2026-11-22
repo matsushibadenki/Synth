@@ -1,0 +1,19 @@
+Classic 5, Extended 8, retirement and 8-voice unison passed
+Waveform fingerprint: 5430208012584402975
+CPU p50 0.582 ms / p99 0.681 ms
+44100 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.031 ms, budget 1.451 ms
+Waveform fingerprint: 13791962060762539731
+CPU p50 1.132 ms / p99 1.318 ms
+44100 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.751 ms, budget 2.902 ms
+Waveform fingerprint: 10280704813890168508
+CPU p50 0.574 ms / p99 0.662 ms
+48000 Hz / 64 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.749 ms, budget 1.333 ms
+Waveform fingerprint: 17569641077765037245
+CPU p50 1.122 ms / p99 1.297 ms
+48000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 1.745 ms, budget 2.667 ms
+Waveform fingerprint: 12529595121696297249
+CPU p50 0.326 ms / p99 0.796 ms
+96000 Hz / 64 frames: wall misses 33, CPU misses 29, silent blocks 0 / 1004, worst 1.656 ms, budget 0.667 ms
+Waveform fingerprint: 10574775613919399694
+CPU p50 0.639 ms / p99 0.731 ms
+96000 Hz / 128 frames: wall misses 0, CPU misses 0, silent blocks 0 / 1004, worst 0.794 ms, budget 1.333 ms

@@ -14,6 +14,18 @@ A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls a
 Use this section for current priorities; subsequent milestones retain implementation history and measurement conditions.
 当前优先级见本节，后续阶段保留实现历史与测量条件。
 
+- 🟢 [Done] Pianoの鍵盤描画とネイティブ入力を移植。白鍵／黒鍵の陰影、シアンの押鍵表示、ドラッグ演奏、iOSマルチタッチに対応。既存の音域、下部固定、PITCH／MODを維持。macOSの入力回帰テストと両プラットフォームのビルドを確認。
+  Ported Piano key rendering and native input, including drag playing and iOS multitouch; retained note range, fixed bottom placement and wheels. Native macOS input regression and both platform builds passed.
+  移植Piano键盘绘制与原生输入，支持滑奏及iOS多点触控，保留音域、底部固定和双轮；macOS输入回归及双平台构建通过。
+- ⭕️ [Pending] 移植後のiPhone実機マルチタッチとDAW内AUv3の操作確認。
+  Physical iPhone multitouch and DAW-hosted AUv3 interaction after this port.
+  移植后的iPhone真机多点触控及DAW内AUv3操作验证。
+- 🟢 [Done] 音質分析を参考に、アタック充電目標を1.26へ調整し、RC係数も再計算して設定時間を維持。ミキサーに有界な微量の非対称歪み、共振時のフィルター帰還に穏やかな追加飽和を導入。UI／SYNTH/05表記／保存形式は維持。
+  Reference-inspired attack curvature with normalized timing, bounded asymmetric mixer color and gently stronger resonant feedback saturation; UI, branding and state format retained.
+  参考分析调整起音曲线并保持设定时间，加入有界的微量非对称混音饱和与共振反馈压缩，保留界面、标识和保存格式。
+- ⭕️ [Pending] 上記の音色調整は挙動モデル。実機への一致と既存プリセットの聴感評価は未確認。VCAのS字化／発振器リセット波形の変更は採用せず、校正用録音を待つ。
+  Behavioral refinements await hardware-recording calibration and listening comparison; VCA S-curves and oscillator reset reshaping are deferred.
+  上述为行为模型，实机匹配及预设听感对比待验证；暂缓VCA S曲线和振荡器复位整形。
 - 🟢 [Done] フィルター／飽和、EG時間精度、制御平滑化、RING／ディレイ／Sync／PWMの音質改善、局所ノイズPWM補正。
   Filter/saturation, envelope timing, control smoothing, RING/delay/sync/PWM quality and local noise-PWM correction.
   滤波／饱和、包络时间、控制平滑、RING／延迟／Sync／PWM音质与局部噪声PWM修正。

@@ -1,0 +1,21 @@
+Log-pitch glide converges within 0.2 cent at 48/192 kHz
+Analog cards: five independent bounded trajectories, smooth drift, sample-rate invariance and Tune passed
+Envelope attack samples at 48 kHz: [2407, 2389, 2371, 2352, 2334]; continuous retrigger passed
+Curtis response: 176400 Hz internal, slope -21.298483 dB/oct; self-oscillation RMS 0.10565705
+Curtis response: 192000 Hz internal, slope -21.291761 dB/oct; self-oscillation RMS 0.10563489
+2x FIR: pass 0.000990685666400551 dB, ultrasonic rejection -107.37834982598089 dB
+4x FIR: pass 0.001169552250736465 dB, ultrasonic rejection -107.28505006216113 dB
+Five-voice sync + Poly-Mod + resonance: 17.848171875000002% render-thread CPU, 17.970465123653412% wall-time budget (offline, optimized, current Mac)
+Dry sustain MIDI 48: 5–95% RMS span 0.21393585 dB, max 80 ms change 0.21702957 dB
+Dry sustain MIDI 72: 5–95% RMS span 0.036201477 dB, max 80 ms change 0.035728455 dB
+Dry sustain MIDI 84: 5–95% RMS span 0.021305084 dB, max 80 ms change 0.022037506 dB
+Dry sustain: single VCO span 0.040489197 dB; saved Fine=5 span 4.7417984 dB
+30 s sustain card 1, MIDI 48: P5–95 0.21336365 dB, full span 0.21944809 dB
+30 s sustain card 1, MIDI 72: P5–95 0.03422928 dB, full span 0.03888321 dB
+30 s sustain card 1, MIDI 84: P5–95 0.021625519 dB, full span 0.023719788 dB
+30 s sustain card 2, MIDI 72: P5–95 0.03725815 dB, full span 0.04059601 dB
+30 s sustain card 3, MIDI 72: P5–95 0.033226013 dB, full span 0.03548813 dB
+30 s sustain card 4, MIDI 72: P5–95 0.03610611 dB, full span 0.040740967 dB
+30 s sustain card 5, MIDI 72: P5–95 0.030647278 dB, full span 0.033546448 dB
+Analog regression checks passed
+Reference tone: attack timing/curvature at three rates, bounded monotonic mixer and even-order color passed
