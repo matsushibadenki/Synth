@@ -1,6 +1,7 @@
 import AVFoundation
 import AudioToolbox
 import Foundation
+import simd
 
 final class SharedSynthParameters {
     private var raw = SynthParameters()
@@ -247,12 +248,13 @@ struct LadderColorFilter {
 // Behavioral gain staging, kept separate so input overload and VCA envelope
 // level do not share one generic waveshaper. Constants await hardware calibration.
 enum AnalogSignalPath {
+    // A small differential-pair bias gives unequal positive/negative headroom.
+    // Remove its idle current and normalize its incremental gain at zero input.
+    private static let mixerBias: Float = -0.03
+    private static let mixerIdle = tanhf(mixerBias)
+    private static let mixerGain = 0.65/(0.48*(1-mixerIdle*mixerIdle))
     @inline(__always) static func mixer(_ input: Float) -> Float {
-        // Unity small-signal slope before the existing 0.65 mixer/filter scaling.
-        let saturated = tanhf(input*0.48)
-        // Bounded even-order color preserves the zero crossing and small-signal
-        // gain. Unlike a quadratic input term, this cannot fold at large inputs.
-        return (saturated + 0.03*saturated*saturated)*(0.65/0.48)
+        (tanhf(input*0.48+mixerBias)-mixerIdle)*mixerGain
     }
     @inline(__always) static func amplifier(_ input: Float,envelope: Float,gain: Float) -> Float {
         // The envelope controls current before output-stage saturation. Quiet
@@ -267,39 +269,46 @@ private struct CurtisFilter {
     private var state = SIMD4<Float>.zero
     mutating func process(_ input: Float, cutoff: Float, resonance: Float, sampleRate: Float, sharedTangent: Float? = nil) -> Float {
         let g = sharedTangent ?? tanf(.pi*min(sampleRate*0.4,max(5,cutoff))/sampleRate)
-        // Gain-cell compression is local to each pole, not just a clipper
-        // around an otherwise linear cascade. Freeze the incremental gains for
-        // this trapezoidal step, preserving the zero-delay feedback solve.
-        var G=SIMD4<Float>.zero
-        for i in 0..<4 {
-            let current=state[i]*0.55
-            let cellG=g/sqrtf(1+current*current)
-            G[i]=cellG/(1+cellG)
-        }
-        let memory=state*(SIMD4<Float>(repeating:1)-G)
-        let forward=G.x*G.y*G.z*G.w
-        let feedback=((memory.x*G.y+memory.y)*G.z+memory.z)*G.w+memory.w
         let k = min(4.5,max(0,resonance)*4.4)
         let drive = AnalogSignalPath.mixer(input)
-        // More feedback drive gives gently stronger compression at resonance.
-        // Keep feedback gain/self-oscillation range and bass loss unchanged.
-        let color: Float = 0.9 + min(1,max(0,resonance))*0.08
-        var u = (drive-k*feedback)/(1+k*forward)
-        // Solve the saturating feedback equation, rather than saturating the
-        // result of a linear solve (which changes resonance with sample rate).
-        for _ in 0..<3 {
-            let t = tanhf(color*(drive-k*(forward*u+feedback)))
-            let next=u-(u-t/color)/(1+k*forward*(1-t*t))
-            // Further iterations cannot change this fixed Float result.
-            if next == u { break }
-            u=next
+        // Trapezoidal integration of four OTA/capacitor stages:
+        // y[i] = state[i] + g * current(input[i] - y[i]).
+        // The bounded differential-pair current is v/sqrt(1+(1.4*v)^2).
+        // This is a circuit-inspired approximation, not a measured CEM3320 fit.
+        // Solve all poles and resonance together; no frozen per-pole gain or
+        // generic clipper around a linear cascade is required.
+        let G = g/(1+g), G2=G*G
+        let memory=state*(1-G)
+        let feedback=((memory.x*G+memory.y)*G+memory.z)*G+memory.w
+        let u=(drive-k*feedback)/(1+k*G2*G2)
+        var y=SIMD4<Float>.zero
+        y.x=u*G+memory.x
+        y.y=y.x*G+memory.y
+        y.z=y.y*G+memory.z
+        y.w=y.z*G+memory.w
+        for _ in 0..<(g > 0.25 ? 4 : 3) {
+            let voltage=SIMD4(drive-k*y.w,y.x,y.y,y.z)-y
+            let inverse=1/(1+1.96*voltage*voltage).squareRoot()
+            let residual=y-state-g*voltage*inverse
+            let slope=g*inverse*inverse*inverse
+            let inverseDenominator=1/(1+slope)
+            let B=slope*inverseDenominator, C = -residual*inverseDenominator
+            // Eliminate the lower-bidiagonal Jacobian plus its feedback corner.
+            let tail=(C.y*B.z+C.z)*B.w+C.w
+            var delta=SIMD4<Float>.zero
+            delta.x=(C.x-k*B.x*tail)/(1+k*B.x*B.y*B.z*B.w)
+            delta.y=B.y*delta.x+C.y
+            delta.z=B.z*delta.y+C.z
+            delta.w=B.w*delta.z+C.w
+            y += delta
+            // Newton's remaining equation error is quadratic in this correction.
+            // With g <= tan(0.4*pi), k <= 4.5 and this current's curvature,
+            // a 2e-5 correction leaves < 3e-8 truncation residual (below Float
+            // roundoff here). Avoid another full solve at the noise floor.
+            if max(max(abs(delta.x),abs(delta.y)),max(abs(delta.z),abs(delta.w))) < 0.00002 { break }
         }
-        for i in 0..<4 {
-            let delta = (u-state[i])*G[i]
-            u = state[i]+delta
-            state[i] = u+delta
-        }
-        return u
+        state=2*y-state
+        return y.w
     }
 }
 

@@ -1,0 +1,23 @@
+{
+  "device" : {
+    "callbacks" : 8980,
+    "cpu_max_ms" : 0.8199169999998368,
+    "cpu_overruns" : 0,
+    "cpu_p95_ms" : 0.7388329999999943,
+    "frame_histogram" : {
+      "128" : 8980
+    },
+    "minimum_budget_ms" : 1.3333333333333333,
+    "non_cpu_wall_overruns" : 0,
+    "qos_code" : 0,
+    "wall_max_ms" : 0.82308399987596204,
+    "wall_overruns" : 0,
+    "wall_p95_ms" : 0.73995799994008848
+  },
+  "muted" : true,
+  "requested_frames" : 128,
+  "requested_seconds" : 12,
+  "sample_rate" : 96000,
+  "scope" : "Extended eight voices, eight-second releases, Sync\/Poly-Mod, high resonance, ladder and all FX. Note-off halfway through capture. Measures core callback, excluding downstream mixer\/driver. Muted DSP\/FX still run; no audible-dropout claim. Device rate and buffer restored on completion\/errors.",
+  "timestamp_gaps" : 0
+}

@@ -1,0 +1,20 @@
+Offline QoS user-interactive: 33
+Classic 5, Extended 8, retirement and 8-voice unison passed
+Waveform fingerprint: 9604348251196023714
+CPU p50 1.141 ms / p99 1.720 ms
+44100 Hz / 64 frames: wall misses 32, CPU misses 23, silent blocks 0 / 1004, worst 3.457 ms, budget 1.451 ms
+Waveform fingerprint: 7764548714074244834
+CPU p50 2.282 ms / p99 2.931 ms
+44100 Hz / 128 frames: wall misses 13, CPU misses 13, silent blocks 0 / 1004, worst 3.027 ms, budget 2.902 ms
+Waveform fingerprint: 7067296497821804286
+CPU p50 1.131 ms / p99 1.657 ms
+48000 Hz / 64 frames: wall misses 121, CPU misses 91, silent blocks 0 / 1004, worst 2.072 ms, budget 1.333 ms
+Waveform fingerprint: 17547352594708140883
+CPU p50 2.418 ms / p99 3.444 ms
+48000 Hz / 128 frames: wall misses 185, CPU misses 176, silent blocks 0 / 1004, worst 6.201 ms, budget 2.667 ms
+Waveform fingerprint: 10303314607075400334
+CPU p50 0.644 ms / p99 0.748 ms
+96000 Hz / 64 frames: wall misses 385, CPU misses 375, silent blocks 0 / 1004, worst 0.954 ms, budget 0.667 ms
+Waveform fingerprint: 14925489047693976573
+CPU p50 1.198 ms / p99 1.334 ms
+96000 Hz / 128 frames: wall misses 13, CPU misses 12, silent blocks 0 / 1004, worst 1.651 ms, budget 1.333 ms

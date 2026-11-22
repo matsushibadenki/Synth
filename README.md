@@ -14,6 +14,12 @@ A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls a
 Use this section for current priorities; subsequent milestones retain implementation history and measurement conditions.
 当前优先级见本节，后续阶段保留实现历史与测量条件。
 
+- 🟢 [Done] 入力段を動作点バイアス付きの飽和モデルへ変更し、フィルター4段の電流制限と共振帰還を連立で解く回路モデルを導入。UI／SYNTH/05／保存形式／Classic 5音・Extended 8音は維持。96 kHz・64／128フレームの無音実出力試験は各12秒、計26,960コールバックでDSP期限超過0。オフラインのCPU中央値は約16〜22%増で、期限超過も残る。[測定条件と結果](docs/performance/filter-circuit-2026-11-23/README.md)。
+  Added biased input saturation and a coupled four-stage OTA/capacitor feedback solve; UI, branding, state and 5/8 voices retained. Muted 96 kHz output at 64/128 frames had zero kernel overruns across 26,960 callbacks; offline CPU medians increased about 16–22% and misses remain.
+  输入级改为带工作点偏置的饱和模型，滤波器四级电流限制与共振反馈联立求解，保留界面、标识、保存格式及5／8声部。96 kHz、64／128帧静音实际输出共26,960次回调未出现音源超时；离线CPU中位数增加约16–22%，仍有超时。
+- ⭕️ [Pending] 新しい回路モデルの実機録音による音色・自己発振音量の校正、聴感A/B、長時間UI／GPU負荷とiPhone実機の検証。
+  Hardware-recording tone/self-oscillation calibration, listening A/B, long UI/GPU stress and physical iPhone validation of this model.
+  新模型的实机录音音色／自激音量校准、听感A/B、长时间界面／GPU负载及iPhone真机验证。
 - 🟢 [Done] 通常起動のMacアプリでローカルAudioUnit登録検索が `OSStatus -3000` となり、音源OFFのまま鍵盤を無効にする問題を修正。スタンドアロンは専用パラメーター／FXストレージを持つDSPをAVAudioSourceNodeへ直接接続。起動失敗を表示し、Mac入力は対象ウィンドウ内のローカルイベントでも受信。AUv3ホストの音声経路は維持。
   Fixed standalone startup failing with OSStatus -3000 during local component lookup. Standalone DSP now feeds AVAudioSourceNode with instance-owned state; startup failures are shown. Mac keyboard also handles local events within its own window; AUv3 hosting stays separate.
   修复Mac普通启动时本地AudioUnit查询返回OSStatus -3000、导致音源关闭且键盘无响应的问题。独立应用通过AVAudioSourceNode直接连接独立状态的DSP，显示启动错误，并在所属窗口接收本地鼠标事件；保留AUv3宿主音频路径。

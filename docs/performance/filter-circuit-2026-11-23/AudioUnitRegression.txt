@@ -1,0 +1,4 @@
+AU host render 44100 Hz: scheduled offset, velocity-zero release, nil output buffers passed
+AU host render 48000 Hz: scheduled offset, velocity-zero release, nil output buffers passed
+AU host render 96000 Hz: scheduled offset, velocity-zero release, nil output buffers passed
+AU parameters, instance isolation, patch/FX state, invalid-state rejection, automation and public MIDI scheduling passed

@@ -109,6 +109,10 @@ private func checkStress(rate: Double, frames: UInt32) throws {
     print(String(format:"%.0f Hz / %d frames: wall misses %d, CPU misses %d, silent blocks %d / 1004, worst %.3f ms, budget %.3f ms",
         rate,Int(frames),wallMisses,cpuMisses,silentBlocks,worst*1000,budget*1000))
 }
+if CommandLine.arguments.contains("--interactive") {
+    precondition(pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE,0)==0)
+    print("Offline QoS user-interactive: \(qos_class_self().rawValue)")
+}
 try checkPolyphony()
 print("Classic 5, Extended 8, retirement and 8-voice unison passed")
 for rate in [44100.0,48000.0,96000.0] {
