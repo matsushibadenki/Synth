@@ -108,6 +108,10 @@ struct ContentView: View {
         .onReceive(engine.$hostParameters) { next in
             if engine.isHosted,let next { parameters=next }
         }
+        .alert(instrumentText("Audio could not start", "音源を起動できません", "无法启动音频"),isPresented:Binding(get:{engine.startupError != nil},set:{ if !$0 {engine.startupError=nil} })) {
+            Button(instrumentText("Retry","再試行","重试")) { engine.start() }
+            Button(instrumentText("Close","閉じる","关闭"),role:.cancel) { engine.startupError=nil }
+        } message: { Text(engine.startupError ?? "") }
         .onAppear {
             if engine.isHosted { parameters=engine.sharedParams.snapshot();engine.start();return }
             if let data=UserDefaults.standard.data(forKey:"synth.expression.v1"),
@@ -171,19 +175,22 @@ struct ContentView: View {
     }
 
     private func performanceKeyboard(width: CGFloat, height: CGFloat) -> some View {
-        let availableWidth = min(720, max(1, width - 32))
-        let maxHeight = max(1, height * (height < 420 ? 0.22 : 0.27))
-        let wideLayout = PanelLayout(columns: 2, keyboardOnly: true)
-        let useWideLayout = availableWidth >= 600
-        let layout = useWideLayout ? wideLayout : PanelLayout(columns: 1, keyboardOnly: true)
-        let keyboardWidth = min(useWideLayout ? availableWidth : min(599, availableWidth),
-                                maxHeight * CGFloat(layout.aspect))
+        let availableWidth = min(1200, max(1, width - 32))
+        let keyboardHeight = min(height < 420 ? 96 : 156, max(1,height*0.24))
+        let layout = PanelLayout(columns:availableWidth >= 600 ? 2 : 1,keyboardOnly:true)
+        #if os(macOS)
+        let keyCount = 37
+        #else
+        let keyCount = availableWidth < 600 && height >= width ? 15 : (availableWidth < 1000 ? 25 : 37)
+        #endif
+        let firstNote = keyCount == 15 ? 60 : 48
+        let keyNotes = (firstNote..<(firstNote+keyCount)).filter { [0,2,4,5,7,9,11].contains($0%12) }
 
-        return SharedMetalKeyboard(layout: layout, controls: controls,
+        return SharedMetalKeyboard(layout: layout, keyNotes:keyNotes, controls: controls,
                                    switches: switches.map { $0.value.wrappedValue },
                                    enabled: engine.isRunning, changed: apply,
                                    noteOn: { engine.playNote($0) }, noteOff: { engine.releaseNote($0) })
-            .frame(width: keyboardWidth, height: keyboardWidth / CGFloat(layout.aspect))
+            .frame(width: availableWidth, height: keyboardHeight)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
             .padding(.vertical, 4)

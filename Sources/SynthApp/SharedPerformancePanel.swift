@@ -1,8 +1,10 @@
 import SwiftUI
+import os
 
 struct SharedMetalKeyboard: View {
     @Environment(\.scenePhase) private var scenePhase
     let layout: PanelLayout
+    let keyNotes: [Int]
     let controls: [PanelControl]
     let switches: [Bool]
     let enabled: Bool
@@ -32,10 +34,11 @@ struct SharedMetalKeyboard: View {
                     .accessibilityHidden(true)
                 #endif
             }
-        }.aspectRatio(CGFloat(layout.aspect),contentMode:.fit)
+        }
             .onChange(of:enabled) { running in if !running { releaseKeys() } }
             .onChange(of:scenePhase) { phase in if phase != .active { releaseKeys() } }
             .onChange(of: layout) { _ in releaseKeys() }
+            .onChange(of: keyNotes) { _ in releaseKeys() }
             .onDisappear { releaseKeys() }
     }
     private func wheel(_ index: Int,size: CGSize) -> some View {
@@ -86,6 +89,17 @@ struct SharedMetalKeyboard: View {
                                               y: center.y * size.height - height / 2,
                                               width: width, height: height)))
         }
+        // One native surface owns both wheels and keys. A full-size wheel
+        // representable above a second key representable can swallow key hits.
+        let rect = keyboardRect(size:size)
+        let keys = PianoKeyboardLayout(white:keyNotes)
+        let step = rect.width/CGFloat(keyNotes.count)
+        for (index,note) in keyNotes.enumerated() {
+            targets.append(.init(control:.key(note),rect:CGRect(x:rect.minX+CGFloat(index)*step,y:rect.minY,width:step,height:rect.height)))
+        }
+        for key in keys.black {
+            targets.append(.init(control:.key(key.note),rect:keys.blackFrame(key,size:rect.size).offsetBy(dx:rect.minX,dy:rect.minY)))
+        }
         return KeyboardMouseSurface(targets: targets, down: { control, clicks in
             switch control {
             case .key(let note):
@@ -123,16 +137,13 @@ struct SharedMetalKeyboard: View {
                       height: (bottom.y - top.y) * size.height)
     }
     private func keyboardRect(size: CGSize) -> CGRect {
-        let first = keyRect(center: SIMD3(layout.keyX(0),layout.keyY,0.16),
-                            width: layout.keyWidth,depth: 1,size: size)
-        return CGRect(x:first.minX,y:first.minY,
-                      width:CGFloat(layout.keyboardWidth / (layout.width+0.4))*size.width,
-                      height:first.height)
+        let left = layout.point(SIMD3(layout.keyX(0)-layout.keyWidth/2,layout.keyY,0.16)).x*size.width
+        return CGRect(x:left,y:6,width:max(1,size.width-left-6),height:max(1,size.height-12))
     }
 
     private func pianoKeys(size: CGSize) -> some View {
         let rect = keyboardRect(size:size)
-        return PianoKeyboardView(layout:PianoKeyboardLayout(white:layout.whiteNotes),
+        return PianoKeyboardView(layout:PianoKeyboardLayout(white:keyNotes),
                                  pressed:activeNotes,showLabels:rect.height >= 64,
                                  miniature:rect.height < 100,
                                  onTouches: { notes in
@@ -147,7 +158,7 @@ struct SharedMetalKeyboard: View {
                 if activeNotes.remove(note) != nil { noteOff(note) }
             }
         })
-        .id(enabled)
+        .id("\(enabled)-\(keyNotes)")
         .frame(width:rect.width,height:rect.height)
         .position(x:rect.midX,y:rect.midY)
         .allowsHitTesting(enabled)
@@ -162,7 +173,7 @@ struct SharedMetalKeyboard: View {
 #if os(macOS)
 /// AppKit keeps a drag with its originating target in embedded AU windows.
 private struct KeyboardMouseSurface: NSViewRepresentable {
-    enum Control { case key(Int), wheel(Int) }
+    enum Control: Equatable { case key(Int), wheel(Int) }
     struct Target {
         let control: Control
         let rect: CGRect
@@ -180,7 +191,39 @@ private struct KeyboardMouseSurface: NSViewRepresentable {
         var surface: KeyboardMouseSurface?
         private var pressed: Control?
         private var startY: CGFloat = 0
+        private var trackingKeys = false
         override var isFlipped: Bool { true }
+        private var eventMonitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let eventMonitor { NSEvent.removeMonitor(eventMonitor); self.eventMonitor=nil }
+            guard window != nil else { return }
+            // SwiftUI can route a real click to its hosting view instead of the
+            // embedded NSView. Resolve this panel's targets before that routing.
+            eventMonitor=NSEvent.addLocalMonitorForEvents(matching:[.leftMouseDown,.leftMouseDragged,.leftMouseUp]) { [weak self] event in
+                guard let self else { return event }
+                if event.type == .leftMouseDown {
+                    Logger(subsystem:"com.synth05.Synth",category:"KeyboardInput").debug("Mouse window \(event.windowNumber,privacy:.public), surface window \(self.window?.windowNumber ?? -1,privacy:.public)")
+                }
+                guard self.window != nil,event.window === self.window else { return event }
+                switch event.type {
+                case .leftMouseDown:
+                    guard self.target(at:self.convert(event.locationInWindow,from:nil)) != nil else { return event }
+                    self.mouseDown(with:event)
+                case .leftMouseDragged:
+                    guard self.pressed != nil || self.trackingKeys else { return event }
+                    self.mouseDragged(with:event)
+                case .leftMouseUp:
+                    guard self.pressed != nil || self.trackingKeys else { return event }
+                    self.mouseUp(with:event)
+                default: return event
+                }
+                return nil
+            }
+        }
+        deinit { if let eventMonitor { NSEvent.removeMonitor(eventMonitor) } }
+
 
         override func hitTest(_ point: NSPoint) -> NSView? {
             target(at: convert(point, from: superview)) == nil ? nil : self
@@ -196,17 +239,29 @@ private struct KeyboardMouseSurface: NSViewRepresentable {
             let point = convert(event.locationInWindow, from: nil)
             guard let control = target(at: point) else { return }
             pressed = control
+            if case .key = control { trackingKeys = true }
             startY = point.y
             surface?.down(control, event.clickCount)
         }
 
         override func mouseDragged(with event: NSEvent) {
-            guard let pressed else { return }
             let point = convert(event.locationInWindow, from: nil)
-            surface?.drag(pressed, point.y - startY)
+            if trackingKeys {
+                let next: Control?
+                if case .key(let note) = target(at:point) { next = .key(note) }
+                else { next = nil }
+                if next != pressed {
+                    if let pressed { surface?.up(pressed) }
+                    pressed = next
+                    if let next { surface?.down(next,1) }
+                }
+            } else if let pressed {
+                surface?.drag(pressed, point.y - startY)
+            }
         }
 
         override func mouseUp(with event: NSEvent) {
+            trackingKeys = false
             guard let pressed else { return }
             self.pressed = nil
             surface?.up(pressed)
@@ -283,8 +338,10 @@ struct PianoKeyboardView: View {
                         .frame(width: rect.width, height: rect.height)
                         .offset(x: rect.minX)
                 }
+                #if !os(macOS)
                 PianoTouchSurface(layout: layout, onTouches: onTouches)
                     .accessibilityHidden(true)
+                #endif
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(alignment: .top) {
@@ -320,6 +377,7 @@ struct PianoKeyboardView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: pianoKeyName(note)))
+            .accessibilityValue(down ? instrumentText("Pressed","押鍵中","已按下") : instrumentText("Released","離鍵","已松开"))
             .accessibilityAddTraits(.isButton)
             .accessibilitySortPriority(Double(109 - note))
             .accessibilityAction { onAccessibilityPlay(note) }

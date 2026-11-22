@@ -14,9 +14,18 @@ A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls a
 Use this section for current priorities; subsequent milestones retain implementation history and measurement conditions.
 当前优先级见本节，后续阶段保留实现历史与测量条件。
 
-- 🟢 [Done] Pianoの鍵盤描画とネイティブ入力を移植。白鍵／黒鍵の陰影、シアンの押鍵表示、ドラッグ演奏、iOSマルチタッチに対応。既存の音域、下部固定、PITCH／MODを維持。macOSの入力回帰テストと両プラットフォームのビルドを確認。
-  Ported Piano key rendering and native input, including drag playing and iOS multitouch; retained note range, fixed bottom placement and wheels. Native macOS input regression and both platform builds passed.
-  移植Piano键盘绘制与原生输入，支持滑奏及iOS多点触控，保留音域、底部固定和双轮；macOS输入回归及双平台构建通过。
+- 🟢 [Done] 通常起動のMacアプリでローカルAudioUnit登録検索が `OSStatus -3000` となり、音源OFFのまま鍵盤を無効にする問題を修正。スタンドアロンは専用パラメーター／FXストレージを持つDSPをAVAudioSourceNodeへ直接接続。起動失敗を表示し、Mac入力は対象ウィンドウ内のローカルイベントでも受信。AUv3ホストの音声経路は維持。
+  Fixed standalone startup failing with OSStatus -3000 during local component lookup. Standalone DSP now feeds AVAudioSourceNode with instance-owned state; startup failures are shown. Mac keyboard also handles local events within its own window; AUv3 hosting stays separate.
+  修复Mac普通启动时本地AudioUnit查询返回OSStatus -3000、导致音源关闭且键盘无响应的问题。独立应用通过AVAudioSourceNode直接连接独立状态的DSP，显示启动错误，并在所属窗口接收本地鼠标事件；保留AUv3宿主音频路径。
+- 🟢 [Done] Mac鍵盤とホイールを単一のAppKit入力面へ統合。製品ウィンドウ経由の白鍵／黒鍵クリックで音声信号、ドラッグ・領域外移動・再入場・解放を確認。アプリ全体のContentView＋SynthEngineでもクリックによるゲート開閉を確認。
+  Unified Mac keys/wheels in one AppKit input surface; window-delivered white/black clicks generate audio, with drag/outside/re-entry/release regression coverage. Full ContentView + SynthEngine gate transitions also passed.
+  Mac键盘与双轮统一为单个AppKit输入面；窗口点击白／黑键可生成音频，滑动、移出、重入及释放测试通过，完整应用的发音门控验证通过。
+- 🟢 [Done] 鍵盤を画面幅に合わせて拡大。iPhone縦15鍵（C4–D5）／横25鍵（C3–C5）、Mac37鍵（C3–C6）。最大幅1200pt、高さ最大156pt、低いウィンドウでは最大96pt。切替時は保持ノートを解放。15／25／37鍵の入力判定と両プラットフォームビルドを確認し、iPhoneシミュレーターの縦画面で起動・表示確認。
+  Expanded adaptive keyboard: iPhone portrait 15, landscape 25, Mac 37 keys; constrained height for short windows. Hit geometry/builds passed; portrait simulator launch/display verified.
+  自适应扩大键盘：iPhone竖屏15键、横屏25键、Mac37键，低窗口限制高度；输入判定与构建通过，已确认模拟器竖屏启动及显示。
+- 🟢 [Done] Pianoの鍵盤描画とネイティブ入力を移植。白鍵／黒鍵の陰影、シアンの押鍵表示、ドラッグ演奏、iOSマルチタッチに対応。下部固定、PITCH／MODを維持。macOSの入力回帰テストと両プラットフォームのビルドを確認。
+  Ported Piano key rendering and native input, including drag playing and iOS multitouch; retained fixed bottom placement and wheels. Native macOS input regression and both platform builds passed.
+  移植Piano键盘绘制与原生输入，支持滑奏及iOS多点触控，保留底部固定和双轮；macOS输入回归及双平台构建通过。
 - ⭕️ [Pending] 移植後のiPhone実機マルチタッチとDAW内AUv3の操作確認。
   Physical iPhone multitouch and DAW-hosted AUv3 interaction after this port.
   移植后的iPhone真机多点触控及DAW内AUv3操作验证。

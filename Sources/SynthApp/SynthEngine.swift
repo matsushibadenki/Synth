@@ -1,10 +1,13 @@
 import AVFoundation
 import AudioToolbox
 import Foundation
+import os
 
 @MainActor
 final class SynthEngine: ObservableObject {
     @Published var isRunning = false
+    @Published var startupError: String?
+    private let audioLog=Logger(subsystem:"com.synth05.Synth",category:"AudioStartup")
     @Published private(set) var midiSourceCount=0
     @Published private(set) var midiError: OSStatus?
     @Published private(set) var midiControlEvent: MIDIAction?
@@ -30,14 +33,14 @@ final class SynthEngine: ObservableObject {
     @Published private(set) var hostParameters:SynthParameters?
     private var hostTimer:Timer?
     private let engine: AVAudioEngine?
-    private var node: AVAudioUnit?
+    private var node: AVAudioNode?
     private var audioUnit: ProphetLikeAudioUnit?
     private var lastNote: Int = 48
     private var isKeyboardUpdate = false
     private var heldNotes = Set<Int>()
     private var midiNotes = Set<Int>()
     private let midi=MIDIInput()
-    private var isStarting=false,startGeneration=0
+    private var isStarting=false
 
     private let componentDescription = AudioComponentDescription(
         componentType: kAudioUnitType_Generator,
@@ -54,15 +57,6 @@ final class SynthEngine: ObservableObject {
         engine=hostedUnit==nil ? AVAudioEngine():nil
         if let hostedUnit {
             audioUnit=hostedUnit;isRunning=true;hostParameters=sharedParams.snapshot()
-        } else {
-            ProphetLikeAudioUnit.sharedParameters = sharedParams
-            ProphetLikeAudioUnit.sharedEffects = sharedEffects
-            AUAudioUnit.registerSubclass(
-                ProphetLikeAudioUnit.self,
-                as: componentDescription,
-                name: "Local SYNTH/05 Generator",
-                version: UInt32.max
-            )
         }
         _ = effects
         midi.action = { [weak self] in self?.receiveMIDI($0) }
@@ -84,36 +78,46 @@ final class SynthEngine: ObservableObject {
             return
         }
         if isRunning || isStarting { return }
-        isStarting=true;startGeneration += 1;let session=startGeneration
-
-        AVAudioUnit.instantiate(with: componentDescription, options: []) { [weak self] avUnit, error in
-            Task { @MainActor in
-                guard let self,self.startGeneration==session,let engine=self.engine else { return }
-                self.isStarting=false
-                guard error == nil, let avUnit else { return }
-
-                self.node = avUnit
-                self.audioUnit = avUnit.auAudioUnit as? ProphetLikeAudioUnit
-                self.lastNote = Int(self.midiNote.rounded())
-
-                engine.attach(avUnit)
-                engine.connect(avUnit, to:engine.mainMixerNode,format:nil)
-
-                do {
-                    try engine.start()
-                    self.isRunning = true
-                    self.midi.start()
-                } catch {
-                    print("Engine start error: \(error)")
-                    self.stop()
-                }
+        guard let engine else { return }
+        startupError=nil
+        isStarting=true
+        defer { isStarting=false }
+        do {
+            // The standalone instrument owns its DSP directly. Component-registry
+            // lookup can reject a process-local registration in a sandboxed app.
+            let unit=try ProphetLikeAudioUnit(componentDescription:componentDescription,options:[],
+                                             parameters:sharedParams,effects:sharedEffects)
+            audioUnit=unit
+            let rate=engine.outputNode.inputFormat(forBus:0).sampleRate
+            guard rate.isFinite,rate>0,let format=AVAudioFormat(standardFormatWithSampleRate:rate,channels:2) else {
+                throw NSError(domain:NSOSStatusErrorDomain,code:Int(kAudioUnitErr_FormatNotSupported))
             }
+            try unit.outputBusses[0].setFormat(format)
+            try unit.allocateRenderResources()
+            let render=unit.internalRenderBlock
+            let source=AVAudioSourceNode(format:format) { silent,timestamp,frames,buffers in
+                var flags=AudioUnitRenderActionFlags()
+                let status=render(&flags,timestamp,frames,0,buffers,nil,nil)
+                silent.pointee=ObjCBool(flags.contains(.unitRenderAction_OutputIsSilence))
+                return status
+            }
+            node=source
+            engine.attach(source)
+            engine.connect(source,to:engine.mainMixerNode,format:format)
+            try engine.start()
+            lastNote=Int(midiNote.rounded())
+            isRunning=true
+            midi.start()
+        } catch {
+            startupError=error.localizedDescription
+            audioLog.error("Audio engine start failed: \(error.localizedDescription,privacy:.public)")
+            stop()
         }
     }
 
     func stop() {
         if isHosted { noteOffCurrent();return } // Host owns the render lifecycle.
-        startGeneration += 1;isStarting=false
+        isStarting=false
         midi.stop()
         for note in heldNotes.union(midiNotes) { audioUnit?.noteOff(note) }
         heldNotes.removeAll();midiNotes.removeAll()
@@ -124,6 +128,7 @@ final class SynthEngine: ObservableObject {
             engine?.detach(node)
             self.node = nil
         }
+        audioUnit?.deallocateRenderResources()
         audioUnit=nil
         isRunning = false
         sharedEffects.resetLoop()
@@ -131,6 +136,7 @@ final class SynthEngine: ObservableObject {
 
     deinit {
         hostTimer?.invalidate();engine?.stop()
+        if hostedUnit == nil { audioUnit?.deallocateRenderResources() }
     }
     func applyParameters(_ parameters:SynthParameters) {
         if let hostedUnit {
@@ -155,6 +161,7 @@ final class SynthEngine: ObservableObject {
     }
 
     func playNote(_ midi: Int, velocity: Float = 1) {
+        audioLog.debug("Screen keyboard note \(midi,privacy:.public), running \(self.isRunning,privacy:.public)")
         guard isRunning,(0...127).contains(midi) else { return }
         isKeyboardUpdate = true
         midiNote = Double(midi)
