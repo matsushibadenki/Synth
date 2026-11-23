@@ -1,0 +1,5 @@
+OTA/capacitor equation residual: audio band 1.1175871e-07, extreme cutoff 6.2584877e-07
+Circuit 192000.0 Hz: low gain 0.6494803, bass ratio 0.24539131, slope -21.295494, driven gain 0.17519203
+Circuit 384000.0 Hz: low gain 0.6494803, bass ratio 0.24539131, slope -21.268206, driven gain 0.17519851
+Circuit 768000.0 Hz: low gain 0.64948004, bass ratio 0.2453914, slope -21.261389, driven gain 0.17520013
+Biased input: zero idle output, monotonic overload, driven gain 0.37006465/0.6371946 passed

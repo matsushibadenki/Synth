@@ -1,0 +1,7 @@
+Velocity 44100 Hz / unison false: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity 44100 Hz / unison true: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity 48000 Hz / unison false: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity 48000 Hz / unison true: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity 96000 Hz / unison false: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity 96000 Hz / unison true: MIDI 1/32/64/127 monotonic, linear dry gain and zero release passed
+Velocity unison priority/fallback/retrigger/mode changes, gain ramp, invalid/clamped input and voice stealing passed

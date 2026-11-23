@@ -8,7 +8,7 @@ SwiftUI / Metal / AUAudioUnitによる5ボイスの減算合成シンセです�
 A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls and the supplied cyan/lime visual reference.
 基于SwiftUI / Metal的五声部减法合成器，采用原版Rev3音色参数及参考图的青色／黄绿色设计。
 
-## 現在のROADMAP / Current roadmap / 当前路线图（2026-11-09）
+## 現在のROADMAP / Current roadmap / 当前路线图（2026-11-23）
 
 次の優先順位はこの節を参照してください。下の各節には実装履歴と測定条件を残しています。
 Use this section for current priorities; subsequent milestones retain implementation history and measurement conditions.

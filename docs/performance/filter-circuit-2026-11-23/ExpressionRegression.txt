@@ -1,0 +1,3 @@
+Ladder: slopes, maximum resonance/drive/feedback stability and legacy settings migration passed
+Expression: three sample rates, stereo motion, classic bypass, schema isolation passed
+Oscillator color, mixer drive, exact classic bypass and expression migration passed

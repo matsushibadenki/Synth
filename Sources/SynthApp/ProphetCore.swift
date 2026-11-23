@@ -286,7 +286,7 @@ private struct CurtisFilter {
         y.y=y.x*G+memory.y
         y.z=y.y*G+memory.z
         y.w=y.z*G+memory.w
-        for _ in 0..<(g > 0.25 ? 4 : 3) {
+        for _ in 0..<(g > 0.5 ? 4 : 3) {
             let voltage=SIMD4(drive-k*y.w,y.x,y.y,y.z)-y
             let inverse=1/(1+1.96*voltage*voltage).squareRoot()
             let residual=y-state-g*voltage*inverse

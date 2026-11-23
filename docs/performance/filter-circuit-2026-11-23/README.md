@@ -14,7 +14,7 @@ g = tan(pi*cutoff/internalSampleRate)
 k = min(4.5, 4.4*max(0,resonance))
 ```
 
-All four stages and the resonance feedback are solved simultaneously using their sparse Newton Jacobian. The differential current's derivative is included in the solve. This removes frozen per-stage compression coefficients and the previous generic saturator around the linear feedback equation. The implementation uses four-lane SIMD, at most three iterations in the normal engine frequency range, and up to four for extreme normalized cutoffs (`g > 0.25`). Convergence can stop earlier. No render-time allocations or new controls were introduced.
+All four stages and the resonance feedback are solved simultaneously using their sparse Newton Jacobian. The differential current's derivative is included in the solve. This removes frozen per-stage compression coefficients and the previous generic saturator around the linear feedback equation. The implementation uses four-lane SIMD, at most three iterations in the normal engine frequency range, and up to four for extreme normalized cutoffs (`g > 0.5`). Convergence can stop earlier. No render-time allocations or new controls were introduced.
 
 This is an OTA/capacitor behavioral model. It does **not** establish a transistor-level CEM3320 match or hardware-calibrated saturation voltage. Existing cutoff/resonance controls, natural feedback bass loss, oversampling, decimation, UI, SYNTH/05 branding, state schema and Classic 5 / Extended 8 voice allocation are retained. AUv3 uses the same core.
 
@@ -48,6 +48,6 @@ Each device capture lasted 12 seconds, including a six-second held chord followe
 
 ### Sound-model checks
 
-The final nonlinear equation residual was approximately 1.3e-7 in the tested normal band and below 1e-6 at extreme cutoff, including abrupt cutoff changes, overload and feedback clamp. The driven-response gain across 192/384/768 kHz internal rates varied by about 0.005%. Four-pole rolloff, 0.65 small-signal mixer gain, zero idle output and natural bass loss passed. The initial solver also passed the full analog suite, including bounded self-oscillation and 30-second sustain cases; its log is retained separately. Final audio, expression, velocity and AU host regressions are recorded alongside this report.
+The final nonlinear equation residual was below 2e-7 in the tested normal band and below 1e-6 at extreme cutoff, including abrupt cutoff changes, overload and feedback clamp. The driven-response gain across 192/384/768 kHz internal rates varied by about 0.005%. Four-pole rolloff, 0.65 small-signal mixer gain, zero idle output and natural bass loss passed. The initial solver also passed the full analog suite, including bounded self-oscillation and 30-second sustain cases; its log is retained separately. Final audio, expression, velocity and AU host regressions are recorded alongside this report.
 
 The nonlinear operating level changes timbre and high-resonance level. Initial-model self-oscillation RMS was about 0.256 at 176.4/192 kHz internal rates. Existing patch values remain loadable, but exact old waveform/level identity is not promised. Hardware-recording calibration and listening A/B remain pending.

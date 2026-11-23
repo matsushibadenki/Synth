@@ -12,7 +12,7 @@ func checkCircuitResidual() {
                 let k=min(4.5,resonance*4.4)
                 for n in 0..<2048 {
                     let ratio=cutoffRatio*(n%257<100 ? 0.1:1)
-                    let cutoff=sr*ratio,g=tanf(.pi*ratio)
+                    let cutoff=max(5,sr*ratio),g=tanf(.pi*cutoff/sr)
                     let input:Float=n%513 == 0 ? 8 : 2*sinf(Float(n)*0.09)
                     let before=filter.circuitCapacitors
                     let output=filter.process(input,cutoff:cutoff,resonance:resonance,sampleRate:sr)
