@@ -20,6 +20,18 @@ import SwiftUI
         let restored=EffectsController(shared:shared,storage:store)
         precondition(restored.document == rack.document,"Auto-save reload")
         precondition(shared.trySnapshot()!.settings[2].mode == 2,"Restored settings published at startup")
+        let savedDocument = restored.document
+        let savedPlan = shared.trySnapshot()!
+        restored.preview(.sky, index: 0, value: 0.25)
+        let preview = shared.trySnapshot()!
+        precondition(preview.settings[EffectKind.sky.rawValue].values[0] == 0.25)
+        precondition(preview.steps == savedPlan.steps && restored.document == savedDocument)
+        precondition(shared.documentSnapshot() == savedDocument)
+        restored.update(.sky) { $0.values[0] = 0.4 }
+        restored.undo()
+        precondition(shared.trySnapshot()!.settings == savedPlan.settings)
+        restored.redo()
+        precondition(shared.trySnapshot()!.settings[EffectKind.sky.rawValue].values[0] == 0.4)
         restored.loop(1)
         let serial=shared.trySnapshot()!.settings[4].loopSerial
         precondition(serial == 1 && shared.trySnapshot()!.settings[4].loopAction == 1)

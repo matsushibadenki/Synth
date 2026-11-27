@@ -1,19 +1,25 @@
-# Synth — 05 Rev3 inspired
+# SYNTH/05
 
 <img src="docs/images/synth-image1.png">
 <img src="docs/images/synth-image2.png">
 <img src="docs/images/synth-image3.png">
 
-SwiftUI / Metal / AUAudioUnitによる5ボイスの減算合成シンセです。参考画像のシアン／黄緑、金属キャップ付きノブ、黒い筐体を維持し、音色パラメーターをオリジナルRev3に統一しています。
-A five-voice SwiftUI / Metal synthesizer with the original Rev3 voice controls and the supplied cyan/lime visual reference.
-基于SwiftUI / Metal的五声部减法合成器，采用原版Rev3音色参数及参考图的青色／黄绿色设计。
+SwiftUI / Metal / AUAudioUnitによる減算合成シンセです。Classicは5音、Extendedは8音に対応します。参考画像のシアン／黄緑、金属キャップ付きノブ、黒い筐体を維持し、音色パラメーターをオリジナルRev3に統一しています。
+The SwiftUI / Metal synthesizer supports five voices in Classic and eight in Extended. The hardware panel uses the original Rev3 voice controls and cyan/lime color scheme.
+基于SwiftUI / Metal的减法合成器，Classic模式支持五声部，Extended模式支持八声部，采用原版Rev3音色参数及参考图的青色／黄绿色设计。
 
-## 現在のROADMAP / Current roadmap / 当前路线图（2026-11-23）
+## 現在のROADMAP / Current roadmap / 当前路线图（2026-11-28）
 
 次の優先順位はこの節を参照してください。下の各節には実装履歴と測定条件を残しています。
 Use this section for current priorities; subsequent milestones retain implementation history and measurement conditions.
 当前优先级见本节，后续阶段保留实现历史与测量条件。
 
+- 🟢 [Done] 各音源が音色とFXの状態を所有し、レンダー資源の確保時にレート依存係数とFXバッファを準備。FXのプレビューと取り消しは検証済みの接続順を再利用。MacとiOSで鍵盤の当たり判定を共通化し、スタンドアロンでは画面鍵盤とMIDIが同じ音を押しても声部を二重に消費しないよう修正。
+  Each instrument owns its patch and FX state. Render allocation prepares rate-dependent coefficients and FX buffers. FX previews and undo reuse validated routing. Mac and iOS share piano hit testing, and overlapping screen and MIDI presses in the standalone app share a voice.
+  每个音源独立持有音色与效果状态，在分配渲染资源时准备与采样率相关的系数和效果缓冲区。效果预览与撤销复用已验证的路由。Mac与iOS共用琴键命中判定，独立应用中屏幕琴键与MIDI同时按下同音时共用声部。
+  音色12条件とExtended 8音の6条件（44.1／48／96 kHz × 64／128フレーム）で、変更前後のステレオ出力のハッシュが一致。オフラインでは処理期限超過が残る。
+  Stereo sample hashes matched the previous build for 12 patches and six eight-voice stress cases (44.1/48/96 kHz at 64/128 frames). Offline renders still exceeded the buffer deadline.
+  12组音色及6组八声部压力测试（44.1／48／96 kHz，各64／128帧）的立体声采样哈希与修改前一致。离线渲染仍有超时。
 - 🟢 [Done] 入力段を動作点バイアス付きの飽和モデルへ変更し、フィルター4段の電流制限と共振帰還を連立で解く回路モデルを導入。UI／SYNTH/05／保存形式／Classic 5音・Extended 8音は維持。96 kHz・64／128フレームの無音実出力試験は各12秒、計26,960コールバックでDSP期限超過0。オフラインのCPU中央値は約16〜22%増で、期限超過も残る。[測定条件と結果](docs/performance/filter-circuit-2026-11-23/README.md)。
   Added biased input saturation and a coupled four-stage OTA/capacitor feedback solve; UI, branding, state and 5/8 voices retained. Muted 96 kHz output at 64/128 frames had zero kernel overruns across 26,960 callbacks; offline CPU medians increased about 16–22% and misses remain.
   输入级改为带工作点偏置的饱和模型，滤波器四级电流限制与共振反馈联立求解，保留界面、标识、保存格式及5／8声部。96 kHz、64／128帧静音实际输出共26,960次回调未出现音源超时；离线CPU中位数增加约16–22%，仍有超时。

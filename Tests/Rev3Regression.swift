@@ -41,8 +41,8 @@ final class AudioProbe {
     var time=AudioTimeStamp()
     init(_ p: SynthParameters) throws {
         parameters.set { $0=p }
-        ProphetLikeAudioUnit.sharedParameters=parameters
-        unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+        unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+            parameters: parameters, effects: SharedEffects())
         try unit.allocateRenderResources()
         buffer=AVAudioPCMBuffer(pcmFormat:unit.outputBusses[0].format,frameCapacity:256)!
         render=unit.internalRenderBlock

@@ -130,7 +130,7 @@ struct FXDocument: Codable, Equatable {
         return Self(nodes:nodes,edges:zip(chain,chain.dropFirst()).map { FXEdge(from:$0,to:$1,port:"in") })
     }
     // UNGE Graph::layers: stable Kahn traversal, including disconnected nodes.
-    func layers() throws -> [[Int]] {
+    private func layers() throws -> [[Int]] {
         var degree=Dictionary(uniqueKeysWithValues:nodes.map { ($0.id,0) })
         for edge in edges { degree[edge.to,default:0] += 1 }
         var ready=degree.keys.filter { degree[$0] == 0 }.sorted()
@@ -149,7 +149,7 @@ struct FXDocument: Codable, Equatable {
         guard visited == nodes.count else { throw FXGraphError.cycle }
         return result
     }
-    func validate() throws {
+    private func validatedLayers() throws -> [[Int]] {
         guard version == 1, nodes.count == 9, Set(nodes.map(\.id)) == Set(0...8) else { throw FXGraphError.document }
         var occupied=Set<String>(), connections=Set<String>()
         for node in nodes {
@@ -165,17 +165,18 @@ struct FXDocument: Codable, Equatable {
             guard connections.insert(edge.id).inserted else { throw FXGraphError.duplicate }
             guard occupied.insert("\(edge.to):\(edge.port)").inserted else { throw FXGraphError.occupied }
         }
-        _ = try layers()
+        return try layers()
     }
+    func validate() throws { _ = try validatedLayers() }
     func configuration() throws -> FXRenderConfiguration {
-        try validate()
+        let layers = try validatedLayers()
         var needed=Set([8]), pending=[8]
         while let id=pending.popLast() {
             for edge in edges where edge.to == id {
                 if needed.insert(edge.from).inserted { pending.append(edge.from) }
             }
         }
-        let ordered=try layers().flatMap{$0}.filter { needed.contains($0) && $0 != 0 }
+        let ordered=layers.flatMap{$0}.filter { needed.contains($0) && $0 != 0 }
         let settings=(0...8).map { id in nodes.first(where:{$0.id == id})!.settings }
         let steps=ordered.map { id in
             FXRenderStep(id:id,a:edges.first(where:{$0.to == id && $0.port != "b"})?.from ?? -1,
@@ -207,19 +208,49 @@ indirect enum FXCommand {
     }
 }
 struct FXEditor {
-    private(set) var document: FXDocument
-    private var past=[FXDocument](), future=[FXDocument]()
-    init(_ document: FXDocument) throws { try document.validate(); self.document=document }
-    var canUndo: Bool { !past.isEmpty }; var canRedo: Bool { !future.isEmpty }
-    mutating func execute(_ command: FXCommand) throws {
-        var next=document
-        try command.apply(to:&next); try next.validate()
-        guard next != document else { return }
-        past.append(document); if past.count > 64 { past.removeFirst() }
-        future.removeAll(); document=next
+    private struct Revision {
+        let document: FXDocument
+        let configuration: FXRenderConfiguration
+
+        init(_ document: FXDocument) throws {
+            self.configuration = try document.configuration()
+            self.document = document
+        }
     }
-    mutating func undo() { guard let last=past.popLast() else { return }; future.append(document); document=last }
-    mutating func redo() { guard let next=future.popLast() else { return }; past.append(document); document=next }
+
+    private var current: Revision
+    private var past = [Revision]()
+    private var future = [Revision]()
+
+    init(_ document: FXDocument) throws { current = try Revision(document) }
+
+    var document: FXDocument { current.document }
+    var configuration: FXRenderConfiguration { current.configuration }
+    var canUndo: Bool { !past.isEmpty }
+    var canRedo: Bool { !future.isEmpty }
+
+    mutating func execute(_ command: FXCommand) throws {
+        var document = current.document
+        try command.apply(to: &document)
+        guard document != current.document else { return }
+        let next = try Revision(document)
+        past.append(current)
+        if past.count > 64 { past.removeFirst() }
+        future.removeAll()
+        current = next
+    }
+
+    mutating func undo() {
+        guard let previous = past.popLast() else { return }
+        future.append(current)
+        current = previous
+    }
+
+    mutating func redo() {
+        guard let next = future.popLast() else { return }
+        past.append(current)
+        current = next
+    }
 }
 
 final class SharedEffects {

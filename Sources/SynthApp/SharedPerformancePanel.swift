@@ -78,29 +78,16 @@ struct SharedMetalKeyboard: View {
 
     #if os(macOS)
     private func mouseSurface(size: CGSize) -> KeyboardMouseSurface {
-        var targets: [KeyboardMouseSurface.Target] = []
-        for index in 0..<2 {
+        let wheelFrames = (0..<2).map { index in
             let center = layout.point(layout.wheel(index))
             let width = wheelHitWidth(index, size: size)
             let scale = size.width / CGFloat(layout.width + 0.4)
             let height = max(44, scale * 1.25)
-            targets.append(.init(control: .wheel(index),
-                                 rect: CGRect(x: center.x * size.width - width / 2,
-                                              y: center.y * size.height - height / 2,
-                                              width: width, height: height)))
+            return CGRect(x: center.x * size.width - width / 2,
+                          y: center.y * size.height - height / 2, width: width, height: height)
         }
-        // One native surface owns both wheels and keys. A full-size wheel
-        // representable above a second key representable can swallow key hits.
-        let rect = keyboardRect(size:size)
-        let keys = PianoKeyboardLayout(white:keyNotes)
-        let step = rect.width/CGFloat(keyNotes.count)
-        for (index,note) in keyNotes.enumerated() {
-            targets.append(.init(control:.key(note),rect:CGRect(x:rect.minX+CGFloat(index)*step,y:rect.minY,width:step,height:rect.height)))
-        }
-        for key in keys.black {
-            targets.append(.init(control:.key(key.note),rect:keys.blackFrame(key,size:rect.size).offsetBy(dx:rect.minX,dy:rect.minY)))
-        }
-        return KeyboardMouseSurface(targets: targets, down: { control, clicks in
+        return KeyboardMouseSurface(keys: PianoKeyboardLayout(white: keyNotes), keyFrame: keyboardRect(size: size),
+                                    wheelFrames: wheelFrames, down: { control, clicks in
             switch control {
             case .key(let note):
                 if enabled, activeNotes.insert(note).inserted { noteOn(note) }
@@ -127,15 +114,6 @@ struct SharedMetalKeyboard: View {
     }
     #endif
 
-    private func keyRect(center: SIMD3<Float>, width: Float, depth: Float, size: CGSize) -> CGRect {
-        let top = layout.point(center + SIMD3(0, depth / 2, 0))
-        let bottom = layout.point(center - SIMD3(0, depth / 2, 0))
-        let left = layout.point(center - SIMD3(width / 2, 0, 0))
-        let right = layout.point(center + SIMD3(width / 2, 0, 0))
-        return CGRect(x: left.x * size.width, y: top.y * size.height,
-                      width: (right.x - left.x) * size.width,
-                      height: (bottom.y - top.y) * size.height)
-    }
     private func keyboardRect(size: CGSize) -> CGRect {
         let left = layout.point(SIMD3(layout.keyX(0)-layout.keyWidth/2,layout.keyY,0.16)).x*size.width
         return CGRect(x:left,y:6,width:max(1,size.width-left-6),height:max(1,size.height-12))
@@ -174,12 +152,9 @@ struct SharedMetalKeyboard: View {
 /// AppKit keeps a drag with its originating target in embedded AU windows.
 private struct KeyboardMouseSurface: NSViewRepresentable {
     enum Control: Equatable { case key(Int), wheel(Int) }
-    struct Target {
-        let control: Control
-        let rect: CGRect
-    }
-
-    let targets: [Target]
+    let keys: PianoKeyboardLayout
+    let keyFrame: CGRect
+    let wheelFrames: [CGRect]
     let down: (Control, Int) -> Void
     let drag: (Control, CGFloat) -> Void
     let up: (Control) -> Void
@@ -230,7 +205,11 @@ private struct KeyboardMouseSurface: NSViewRepresentable {
         }
 
         private func target(at point: NSPoint) -> Control? {
-            surface?.targets.last { $0.rect.contains(point) }?.control
+            guard let surface else { return nil }
+            let frame = surface.keyFrame
+            let local = CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
+            if let note = surface.keys.note(at: local, size: frame.size) { return .key(note) }
+            return surface.wheelFrames.firstIndex { $0.contains(point) }.map(Control.wheel)
         }
 
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -384,39 +363,7 @@ struct PianoKeyboardView: View {
     }
 }
 
-#if os(macOS)
-private struct PianoTouchSurface: NSViewRepresentable {
-    let layout: PianoKeyboardLayout
-    let onTouches: (Set<Int>) -> Void
-
-    func makeNSView(context: Context) -> MouseView { MouseView() }
-
-    func updateNSView(_ view: MouseView, context: Context) {
-        view.layout = layout
-        view.onTouches = onTouches
-    }
-
-    final class MouseView: NSView {
-        var layout: PianoKeyboardLayout?
-        var onTouches: ((Set<Int>) -> Void)?
-        override var isFlipped: Bool { true }
-
-        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-        override func mouseDown(with event: NSEvent) { play(event) }
-        override func mouseDragged(with event: NSEvent) { play(event) }
-        override func mouseUp(with event: NSEvent) { onTouches?([]) }
-
-        private func play(_ event: NSEvent) {
-            let point = convert(event.locationInWindow, from: nil)
-            if let note = layout?.note(at: point, size: bounds.size) {
-                onTouches?([note])
-            } else {
-                onTouches?([])
-            }
-        }
-    }
-}
-#else
+#if !os(macOS)
 private struct PianoTouchSurface: UIViewRepresentable {
     let layout: PianoKeyboardLayout
     let onTouches: (Set<Int>) -> Void

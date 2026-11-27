@@ -4,8 +4,8 @@ import AudioToolbox
 @main struct EffectsIntegration {
     static func main() throws {
         let parameters=SharedSynthParameters(), shared=SharedEffects()
-        ProphetLikeAudioUnit.sharedParameters=parameters; ProphetLikeAudioUnit.sharedEffects=shared
-        let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+        let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+            parameters: parameters, effects: shared)
         try unit.allocateRenderResources()
         defer { unit.deallocateRenderResources() }
         let buffer=AVAudioPCMBuffer(pcmFormat:unit.outputBusses[0].format,frameCapacity:256)!

@@ -5,7 +5,7 @@ import Foundation
 extension SynthEngine {
     @MainActor fileprivate func checkMIDIOwnership() throws {
         sharedParams.set { $0.releaseEnabled=false }
-        let unit=try ProphetLikeAudioUnit(componentDescription:componentDescription)
+        let unit=try ProphetLikeAudioUnit(componentDescription: componentDescription, parameters: sharedParams, effects: sharedEffects)
         try unit.outputBusses[0].setFormat(AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!)
         try unit.allocateRenderResources();defer { unit.deallocateRenderResources();audioUnit=nil;isRunning=false }
         audioUnit=unit;isRunning=true
@@ -19,10 +19,12 @@ extension SynthEngine {
             }
             return (0..<256).reduce(Float(0)) { max($0,abs(buffer.floatChannelData![0][$1])) }
         }
-        receiveMIDI(.on(60,1));midiNote=72
+        receiveMIDI(.on(60,1.0/127));midiNote=72
         precondition(heldNotes.isEmpty,"Changing current key must not create local ownership of a MIDI-only note")
         playNote(60);releaseNote(60)
-        precondition(gateOn && tail(30)>0.001,"Local release must preserve MIDI note")
+        let softPeak = tail(30)
+        precondition(gateOn && softPeak > 0.00001 && softPeak < 0.002,
+                     "A screen press on a MIDI-held key must preserve its soft velocity and single voice")
         receiveMIDI(.off(60));precondition(!gateOn && tail(60)<0.00001)
         playNote(64);receiveMIDI(.on(64,1));receiveMIDI(.off(64))
         precondition(gateOn && tail(30)>0.001,"MIDI release must preserve local note")

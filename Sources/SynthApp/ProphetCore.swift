@@ -530,25 +530,49 @@ private struct VoiceState {
     }
 }
 
+/// Fixed for one render-resource lifetime, including when AU events split a buffer.
+private struct RenderRates {
+    let host: Float
+    let oversampling: Int
+    let internalRate: Float
+    let controlSlew, tuneSlew, dcPole, onsetStep, velocitySlew, retirementRelease: Float
+    let noiseGain: Float
+    let pinkPoles, pinkGains: SIMD3<Float>
+
+    init(host: Float) {
+        self.host = host
+        oversampling = host <= 48_000 ? 8 : (host <= 96_000 ? 4 : 2)
+        let sr = host * Float(oversampling)
+        internalRate = sr
+        controlSlew = -expm1f(-1 / (host * 0.004))
+        tuneSlew = -expm1f(-1 / (host * 0.06))
+        dcPole = expf(-2 * .pi * 5 / sr)
+        onsetStep = 1 / (sr * 0.001)
+        velocitySlew = -expm1f(-1 / (sr * 0.001))
+        retirementRelease = -expm1f(-9.21034 / max(1, 0.005 * sr))
+        noiseGain = sqrtf(sr / 48_000)
+        let poles = SIMD3<Float>(0.99765, 0.963, 0.57)
+        pinkPoles = SIMD3(powf(poles.x, 48_000 / sr), powf(poles.y, 48_000 / sr), powf(poles.z, 48_000 / sr))
+        pinkGains = SIMD3<Float>(0.099046, 0.2965164, 1.0526913) * (1 - pinkPoles) / (1 - poles)
+    }
+}
+
 class ProphetLikeAudioUnit: AUAudioUnit {
-    static var sharedParameters = SharedSynthParameters()
-    static var sharedEffects = SharedEffects()
-    private let effects: SharedEffects
-    private var effectsDSP = EffectsRackDSP(sampleRate:48_000)
+    let effectStorage: SharedEffects
+    private var effectsDSP: EffectsRackDSP?
 
     private let outputBus: AUAudioUnitBus
     private var outputBusArray: AUAudioUnitBusArray!
     private var inputBusArray: AUAudioUnitBusArray!
-    private let params: SharedSynthParameters
+    let parameterStorage: SharedSynthParameters
     private var renderParameters = SynthParameters()
 
-    private var sampleRateF: Float = 48_000
+    private var rates = RenderRates(host: 48_000)
     private var voices = (0..<8).map { VoiceState(index: $0) }
     private var voiceLimit = 5
     private var processingVoiceCount: Int {
         voiceLimit == voices.count || voices[5...].contains(where: { $0.active }) ? voices.count : voiceLimit
     }
-    private var oversampling = 4
     private var decimator = VoiceDecimator(factor:4)
     private var smoothedControls = SIMD8<Float>.zero
     private var smoothedPolyMod = SIMD2<Float>.zero
@@ -578,26 +602,21 @@ class ProphetLikeAudioUnit: AUAudioUnit {
     private var pendingEventOverflow = false
     private var rngState: UInt32 = 0x1234ABCD
 
-    override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions = []) throws {
-        self.params = Self.sharedParameters
-        self.effects = Self.sharedEffects
-        outputBus = try AUAudioUnitBus(format: AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!)
-        try super.init(componentDescription: componentDescription, options: options)
-        outputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
-        inputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .input, busses: [])
+    convenience override init(componentDescription: AudioComponentDescription,
+                              options: AudioComponentInstantiationOptions = []) throws {
+        try self.init(componentDescription: componentDescription, options: options,
+                      parameters: SharedSynthParameters(), effects: SharedEffects())
     }
 
-    // AUv3 supplies independent storage; the standalone initializer remains compatible.
-    init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions,
+    init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions = [],
          parameters: SharedSynthParameters, effects: SharedEffects) throws {
-        self.params=parameters;self.effects=effects
+        self.parameterStorage = parameters
+        self.effectStorage = effects
         outputBus=try AUAudioUnitBus(format:AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!)
         try super.init(componentDescription:componentDescription,options:options)
         outputBusArray=AUAudioUnitBusArray(audioUnit:self,busType:.output,busses:[outputBus])
         inputBusArray=AUAudioUnitBusArray(audioUnit:self,busType:.input,busses:[])
     }
-    var parameterStorage: SharedSynthParameters { params }
-    var effectStorage: SharedEffects { effects }
     // Only the AUv3 render thread uses these entry points/override; no queue lock.
     var renderParameterOverride: SynthParameters?
     // AUv3 allocation/reset: the host serializes these calls with rendering.
@@ -609,7 +628,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
         oscillatorAmounts = .zero
         for i in heldVelocities.indices { heldVelocities[i]=1 }
         for i in voices.indices { voices[i]=VoiceState(index:i) }
-        decimator.reset();effectsDSP.reset();controlsInitialized=false
+        decimator.reset();effectsDSP?.reset();controlsInitialized=false
         lfoPhase=0;pink = .zero;referencePhase=0;expressionPhase=0
         rngState=0x1234ABCD;renderParameterOverride=nil
     }
@@ -648,15 +667,14 @@ class ProphetLikeAudioUnit: AUAudioUnit {
 
     override var outputBusses: AUAudioUnitBusArray { outputBusArray }
     override var inputBusses: AUAudioUnitBusArray { inputBusArray }
-    override var latency: TimeInterval { oversampling > 1 ? 32/Double(sampleRateF) : 0 }
+    override var latency: TimeInterval { 32 / Double(rates.host) }
 
     override func allocateRenderResources() throws {
         try super.allocateRenderResources()
-        sampleRateF = Float(outputBus.format.sampleRate)
-        renderParameters = params.snapshot()
-        effectsDSP = EffectsRackDSP(sampleRate:sampleRateF)
-        oversampling = sampleRateF <= 48000 ? 8 : (sampleRateF <= 96000 ? 4 : 2)
-        decimator = VoiceDecimator(factor:oversampling)
+        rates = RenderRates(host: Float(outputBus.format.sampleRate))
+        renderParameters = parameterStorage.snapshot()
+        effectsDSP = EffectsRackDSP(sampleRate:rates.host)
+        decimator = VoiceDecimator(factor:rates.oversampling)
         controlsInitialized = false
         oscillatorAmounts = .zero
         // A new device rate starts a new sample timeline; do not interpret the
@@ -668,13 +686,18 @@ class ProphetLikeAudioUnit: AUAudioUnit {
         }
     }
 
+    override func deallocateRenderResources() {
+        effectsDSP = nil
+        super.deallocateRenderResources()
+    }
+
     override var internalRenderBlock: AUInternalRenderBlock {
         return { [weak self] _, _, frameCount, _, outputData, _, _ in
-            guard let self else { return noErr }
+            guard let self, let rack = self.effectsDSP else { return kAudioUnitErr_Uninitialized }
             if let override=self.renderParameterOverride { self.renderParameters=override }
-            else if let latest = self.params.trySnapshot() { self.renderParameters = latest }
+            else if let latest = self.parameterStorage.trySnapshot() { self.renderParameters = latest }
             let p = self.renderParameters
-            if let configuration=self.effects.trySnapshot() { self.effectsDSP.prepare(configuration) }
+            if let configuration=self.effectStorage.trySnapshot() { rack.prepare(configuration) }
             var eventCount = 0
             var eventOverflow = false
             if self.eventLock.try() {
@@ -706,8 +729,9 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                 }
             }
 
-            let hostRate = self.sampleRateF
-            let sr = hostRate*Float(self.oversampling)
+            let rates = self.rates
+            let hostRate = rates.host
+            let sr = rates.internalRate
             let cutoffNormRange: Float = log2f(1000)
             let controlTarget = SIMD8(p.cutoffNorm,p.resonance,p.oscALevel,p.oscBLevel,p.noiseLevel,p.oscAPulseWidth,p.oscBPulseWidth,p.filterEnvAmount)
             let initializeControls = !self.controlsInitialized
@@ -720,14 +744,6 @@ class ProphetLikeAudioUnit: AUAudioUnit {
             let oscillatorTarget = p.expression.enabled
                 ? SIMD2(ExpressionParameters.unit(p.expression.oscillatorColor), ExpressionParameters.unit(p.expression.mixerDrive))
                 : .zero
-            let controlSlew = -expm1f(-1/(hostRate*0.004))
-            let tuneSlew = -expm1f(-1/(hostRate*0.06))
-            let dcPole = expf(-2 * .pi*5/sr)
-            let onsetStep: Float = 1/(sr*0.001)
-            let velocitySlew = -expm1f(-1/(sr*0.001))
-            let noiseGain = sqrtf(sr/48000)
-            let pinkPoles = SIMD3(powf(0.99765,48000/sr),powf(0.963,48000/sr),powf(0.57,48000/sr))
-            let pinkGains = SIMD3<Float>(0.099046,0.2965164,1.0526913)*(1-pinkPoles)/(1-SIMD3<Float>(0.99765,0.963,0.57))
             let ratioA = powf(2,(p.oscAFrequency.rounded()-24)/12)
             let ratioB = powf(2,(p.oscBFrequency.rounded()-24)/12)
             let globalTune = p.masterTuneSemitones+p.pitchWheel*7
@@ -735,7 +751,6 @@ class ProphetLikeAudioUnit: AUAudioUnit {
             let needsGlide=p.unisonMode && p.glideTime>0
             let glideCoefficient = -expm1(-1/(Double(sr)*Double(max(0.001,p.glideTime))))
             let processingCount = self.processingVoiceCount
-            let retirementRelease = -expm1f(-9.21034 / max(1, 0.005 * sr))
             for vi in 0..<processingCount {
                 let card = self.voices[vi].card
                 self.voices[vi].filterCoefficientTarget = EnvelopeCoefficients(
@@ -752,8 +767,8 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                 }
                 // RELEASE off remains an immediate fast-release command.
                 if vi >= self.voiceLimit {
-                    self.voices[vi].filterCoefficientTarget.release = retirementRelease
-                    self.voices[vi].ampCoefficientTarget.release = retirementRelease
+                    self.voices[vi].filterCoefficientTarget.release = rates.retirementRelease
+                    self.voices[vi].ampCoefficientTarget.release = rates.retirementRelease
                 }
                 if !p.releaseEnabled || vi >= self.voiceLimit {
                     self.voices[vi].filterCoefficients.release=self.voices[vi].filterCoefficientTarget.release
@@ -769,30 +784,30 @@ class ProphetLikeAudioUnit: AUAudioUnit {
 
             self.voices.withUnsafeMutableBufferPointer { voiceBuffer in
                 for i in 0..<Int(frameCount) {
-                    self.smoothedControls += (controlTarget-self.smoothedControls)*controlSlew
-                    self.smoothedPolyMod += (polyTarget-self.smoothedPolyMod)*controlSlew
-                    self.smoothedWheelMix += (p.wheelSourceMix-self.smoothedWheelMix)*controlSlew
+                    self.smoothedControls += (controlTarget-self.smoothedControls)*rates.controlSlew
+                    self.smoothedPolyMod += (polyTarget-self.smoothedPolyMod)*rates.controlSlew
+                    self.smoothedWheelMix += (p.wheelSourceMix-self.smoothedWheelMix)*rates.controlSlew
                     let controls = self.smoothedControls
                     let noiseAmount=min(1,max(0,self.smoothedWheelMix*p.modWheel))
                     let noisePWMMix: Float = noiseAmount>0.000001 ? noiseAmount:0
-                    self.expressionAmounts += (p.expression.amounts-self.expressionAmounts)*controlSlew
+                    self.expressionAmounts += (p.expression.amounts-self.expressionAmounts)*rates.controlSlew
                     self.expressionPhase += 2 * .pi * p.expression.rateHz / hostRate
                     self.expressionPhase.formTruncatingRemainder(dividingBy:2 * .pi)
                     if self.oscillatorAmounts != oscillatorTarget {
-                        self.oscillatorAmounts += (oscillatorTarget-self.oscillatorAmounts)*controlSlew
+                        self.oscillatorAmounts += (oscillatorTarget-self.oscillatorAmounts)*rates.controlSlew
                         if oscillatorTarget == .zero && max(self.oscillatorAmounts.x,self.oscillatorAmounts.y)<0.000001 {
                             self.oscillatorAmounts = .zero
                         }
                     }
                     let oscillatorColor = self.oscillatorAmounts.x
                     let mixerDrive = self.oscillatorAmounts.y
-                    self.colorAmounts += (p.expression.colorAmounts-self.colorAmounts)*controlSlew
+                    self.colorAmounts += (p.expression.colorAmounts-self.colorAmounts)*rates.controlSlew
                     let expressionWave=(self.expressionAmounts.y == 0 && self.expressionAmounts.z == 0) ? 0:sinf(self.expressionPhase)
                     let motion = expressionWave*self.expressionAmounts.y*0.16
                     for vi in 0..<processingCount {
-                        voiceBuffer[vi].filterCoefficients.approach(voiceBuffer[vi].filterCoefficientTarget,coefficient:controlSlew)
-                        voiceBuffer[vi].ampCoefficients.approach(voiceBuffer[vi].ampCoefficientTarget,coefficient:controlSlew)
-                        voiceBuffer[vi].card.advance(seconds:1/Double(hostRate),tuneCoefficient:tuneSlew)
+                        voiceBuffer[vi].filterCoefficients.approach(voiceBuffer[vi].filterCoefficientTarget,coefficient:rates.controlSlew)
+                        voiceBuffer[vi].ampCoefficients.approach(voiceBuffer[vi].ampCoefficientTarget,coefficient:rates.controlSlew)
+                        voiceBuffer[vi].card.advance(seconds:1/Double(hostRate),tuneCoefficient:rates.tuneSlew)
                         if !needsGlide {
                             let hz=voiceBuffer[vi].targetHz*tuningRatio
                             let card=voiceBuffer[vi].card
@@ -804,7 +819,7 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                             voiceBuffer[vi].cachedKeyboardTrack=p.filterKeyboardTrack ? log2f(max(0.001,hz/261.6256))/log2f(1000):0
                         }
                     }
-                    for _ in 0..<self.oversampling {
+                    for _ in 0..<rates.oversampling {
                         self.lfoPhase += lfoStep
                         if self.lfoPhase > 2.0 * .pi {
                             self.lfoPhase -= 2.0 * .pi
@@ -812,9 +827,9 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                         let lfo = (p.lfoSaw ? self.evalLFO(phase: Float(self.lfoPhase), waveform: 1) : 0)
                             + (p.lfoTriangle ? self.evalLFO(phase: Float(self.lfoPhase), waveform: 0) : 0)
                             + (p.lfoSquare ? self.evalLFO(phase: Float(self.lfoPhase), waveform: 2) : 0)
-                        let white = self.randBipolar()*noiseGain
+                        let white = self.randBipolar()*rates.noiseGain
                         // Three-pole pinking filter. The mixer retains the white source.
-                        self.pink = self.pink*pinkPoles + SIMD3(repeating:white)*pinkGains
+                        self.pink = self.pink*rates.pinkPoles + SIMD3(repeating:white)*rates.pinkGains
                         let pinkNoise = (self.pink.x + self.pink.y + self.pink.z + white * 0.1848) * 0.2
                         let wheel = (lfo * (1-self.smoothedWheelMix) + pinkNoise * self.smoothedWheelMix) * p.modWheel
 
@@ -937,21 +952,21 @@ class ProphetLikeAudioUnit: AUAudioUnit {
                                 filtered += (color-filtered)*self.colorAmounts.x
                             }
                             // AC coupling removes pulse-width DC before the final VCA.
-                            let coupled = filtered-voiceBuffer[vi].dcInput+dcPole*voiceBuffer[vi].dcOutput
+                            let coupled = filtered-voiceBuffer[vi].dcInput+rates.dcPole*voiceBuffer[vi].dcOutput
                             voiceBuffer[vi].dcInput = filtered; voiceBuffer[vi].dcOutput = coupled
                             let voiceOut = AnalogSignalPath.amplifier(coupled,envelope:voiceBuffer[vi].ampEnvelope.level,gain:card.amplifierGain)
                             // Slew changes on a reused voice; first attacks keep their exact gain.
                             if voiceBuffer[vi].velocityGain != voiceBuffer[vi].velocity {
                                 let delta=voiceBuffer[vi].velocity-voiceBuffer[vi].velocityGain
                                 voiceBuffer[vi].velocityGain = abs(delta)<0.000001 ? voiceBuffer[vi].velocity:
-                                    voiceBuffer[vi].velocityGain+delta*velocitySlew
+                                    voiceBuffer[vi].velocityGain+delta*rates.velocitySlew
                             }
                             var gain = voiceBuffer[vi].velocityGain
                             let onset = voiceBuffer[vi].onsetProgress
                             if onset < 1 {
                                 // Start continuously at zero even with a very fast VCA attack.
                                 gain *= onset*onset*(3-2*onset)
-                                voiceBuffer[vi].onsetProgress = min(1,onset+onsetStep)
+                                voiceBuffer[vi].onsetProgress = min(1,onset+rates.onsetStep)
                             }
                             outL += voiceOut*gain
                         }
@@ -967,13 +982,13 @@ class ProphetLikeAudioUnit: AUAudioUnit {
 
                     // Linear pan preserves the mono sum and avoids a loudness jump.
                     let pan = expressionWave*self.expressionAmounts.z
-                    let processed=self.effectsDSP.process(SIMD2(mono*(1-pan),mono*(1+pan)))
+                    let processed=rack.process(SIMD2(mono*(1-pan),mono*(1+pan)))
                     let volume=min(1,max(0,p.masterVolume))
                     left[i]=processed.x*volume
                     right[i]=processed.y*volume
                 }
             }
-            self.effects.reportLoop(state:self.effectsDSP.loopState,seconds:self.effectsDSP.loopSeconds)
+            self.effectStorage.reportLoop(state:rack.loopState,seconds:rack.loopSeconds)
             return noErr
         }
     }

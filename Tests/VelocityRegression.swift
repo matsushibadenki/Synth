@@ -21,9 +21,9 @@ private final class VelocityProbe {
             $0.envBAttack=0.001;$0.envBDecay=0.001;$0.envBSustain=1;$0.releaseEnabled=false
             $0.masterVolume=0.5
         }
-        ProphetLikeAudioUnit.sharedParameters=params;ProphetLikeAudioUnit.sharedEffects=fx
         unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,
-            componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+            componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+            parameters: params, effects: fx)
         try unit.outputBusses[0].setFormat(AVAudioFormat(standardFormatWithSampleRate:rate,channels:2)!)
         try unit.allocateRenderResources()
         buffer=AVAudioPCMBuffer(pcmFormat:unit.outputBusses[0].format,frameCapacity:256)!

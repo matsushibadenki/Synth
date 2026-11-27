@@ -35,9 +35,10 @@ final class HostedSynthAudioUnit: ProphetLikeAudioUnit {
     // 16 channels x 128 keys, and per-key aggregate ownership. Fixed before render.
     private var keys=[UInt8](repeating:0,count:2048),counts=[UInt8](repeating:0,count:128)
     private var pedals=[Bool](repeating:false,count:16)
-    override init(componentDescription:AudioComponentDescription,options:AudioComponentInstantiationOptions = []) throws {
-        try super.init(componentDescription:componentDescription,options:options,
-                       parameters:SharedSynthParameters(),effects:SharedEffects())
+    override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions,
+                  parameters: SharedSynthParameters, effects: SharedEffects) throws {
+        try super.init(componentDescription: componentDescription, options: options,
+                       parameters: parameters, effects: effects)
         _ = SynthAUControls.addresses // Initialize metadata outside render.
         let flags:AudioUnitParameterOptions=[.flag_IsReadable,.flag_IsWritable]
         var children=[AUParameterNode]()

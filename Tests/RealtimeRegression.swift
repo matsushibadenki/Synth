@@ -82,7 +82,6 @@ func checkRenderNeverWaitsForUI() throws {
 
 func measureRenderDeadlines() throws {
     let params=SharedSynthParameters(), effects=SharedEffects()
-    ProphetLikeAudioUnit.sharedParameters=params; ProphetLikeAudioUnit.sharedEffects=effects
     params.set {
         $0.unisonMode=true; $0.oscSync=true; $0.polyModOscB=0.7
         $0.polyModToFreqA=true; $0.polyModToFilter=true; $0.oscAPulse=true
@@ -91,7 +90,8 @@ func measureRenderDeadlines() throws {
     }
     let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(
         componentType:kAudioUnitType_Generator,componentSubType:0x50723535,
-        componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+        componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+        parameters: params, effects: effects)
     func cpuSeconds() -> Double {
         var t=timespec(); precondition(clock_gettime(CLOCK_THREAD_CPUTIME_ID,&t)==0)
         return Double(t.tv_sec)+Double(t.tv_nsec)*1e-9

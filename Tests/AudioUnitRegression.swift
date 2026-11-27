@@ -34,6 +34,23 @@ private func midiEvent(_ time:Int64,_ status:UInt8,_ a:UInt8,_ b:UInt8)->AURende
 }
 @main struct AudioUnitRegression {
     static func main() throws {
+        let first = try ProphetLikeAudioUnit(componentDescription: description)
+        let second = try ProphetLikeAudioUnit(componentDescription: description)
+        first.parameterStorage.set { $0.modWheel = 0.75 }
+        first.effectStorage.sendLoop(1)
+        check(second.parameterStorage.snapshot().modWheel == SynthParameters().modWheel)
+        check(second.effectStorage.trySnapshot()!.settings[EffectKind.pedal.rawValue].loopSerial == 0)
+        let render = first.internalRenderBlock
+        let output = AVAudioPCMBuffer(pcmFormat: first.outputBusses[0].format, frameCapacity: 64)!
+        var flags = AudioUnitRenderActionFlags(), timestamp = AudioTimeStamp()
+        func renderStatus() -> OSStatus {
+            render(&flags, &timestamp, 64, 0, output.mutableAudioBufferList, nil, nil)
+        }
+        check(renderStatus() == kAudioUnitErr_Uninitialized)
+        try first.allocateRenderResources()
+        check(renderStatus() == noErr)
+        first.deallocateRenderResources()
+        check(renderStatus() == kAudioUnitErr_Uninitialized)
         let a=try AUProbe(),b=try AUProbe()
         check(a.unit.parameterTree!.allParameters.count==50)
         check(a.unit.scheduleMIDIEventBlock != nil,"Host MIDI scheduler must exist for aumu")

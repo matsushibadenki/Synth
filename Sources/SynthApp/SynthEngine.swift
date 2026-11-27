@@ -5,23 +5,21 @@ import os
 
 @MainActor
 final class SynthEngine: ObservableObject {
-    @Published var isRunning = false
+    @Published private(set) var isRunning = false
     @Published var startupError: String?
     private let audioLog=Logger(subsystem:"com.synth05.Synth",category:"AudioStartup")
     @Published private(set) var midiSourceCount=0
     @Published private(set) var midiError: OSStatus?
     @Published private(set) var midiControlEvent: MIDIAction?
-    @Published var gateOn = false
+    @Published private(set) var gateOn = false
     @Published var midiNote: Double = 48 {
         didSet {
-            if heldNotes.contains(lastNote) && !isKeyboardUpdate {
-                let note = Int(midiNote.rounded())
-                heldNotes.remove(lastNote)
-                heldNotes.insert(note)
-                if !midiNotes.contains(lastNote) { audioUnit?.noteOff(lastNote) }
-                audioUnit?.noteOn(note, velocity: 1)
-                lastNote = note
-            }
+            guard !isKeyboardUpdate, heldNotes.contains(lastNote), midiNote.isFinite,
+                  (0...127).contains(midiNote.rounded()) else { return }
+            let note = Int(midiNote.rounded())
+            guard note != lastNote else { return }
+            releaseNote(lastNote)
+            pressLocalNote(note, velocity: 1)
         }
     }
 
@@ -105,7 +103,6 @@ final class SynthEngine: ObservableObject {
             engine.attach(source)
             engine.connect(source,to:engine.mainMixerNode,format:format)
             try engine.start()
-            lastNote=Int(midiNote.rounded())
             isRunning=true
             midi.start()
         } catch {
@@ -119,9 +116,7 @@ final class SynthEngine: ObservableObject {
         if isHosted { noteOffCurrent();return } // Host owns the render lifecycle.
         isStarting=false
         midi.stop()
-        for note in heldNotes.union(midiNotes) { audioUnit?.noteOff(note) }
-        heldNotes.removeAll();midiNotes.removeAll()
-        gateOn = false
+        releaseAllNotes()
         engine?.stop()
         if let node {
             engine?.disconnectNodeInput(node)
@@ -148,13 +143,16 @@ final class SynthEngine: ObservableObject {
 
     func noteOnCurrent() {
         guard isRunning else { return }
-        lastNote = Int(midiNote.rounded())
-        if heldNotes.insert(lastNote).inserted { audioUnit?.noteOn(lastNote, velocity: 1) }
-        gateOn = true
+        guard midiNote.isFinite, (0...127).contains(midiNote.rounded()) else { return }
+        pressLocalNote(Int(midiNote.rounded()), velocity: 1)
     }
 
     func noteOffCurrent() {
         midi.resetPerformance()
+        releaseAllNotes()
+    }
+
+    private func releaseAllNotes() {
         for note in heldNotes.union(midiNotes) { audioUnit?.noteOff(note) }
         heldNotes.removeAll();midiNotes.removeAll()
         gateOn = false
@@ -166,8 +164,14 @@ final class SynthEngine: ObservableObject {
         isKeyboardUpdate = true
         midiNote = Double(midi)
         isKeyboardUpdate = false
-        lastNote = midi
-        if heldNotes.insert(midi).inserted { audioUnit?.noteOn(midi, velocity: velocity) }
+        pressLocalNote(midi, velocity: velocity)
+    }
+
+    private func pressLocalNote(_ note: Int, velocity: Float) {
+        lastNote = note
+        if heldNotes.insert(note).inserted && !midiNotes.contains(note) {
+            audioUnit?.noteOn(note, velocity: velocity)
+        }
         gateOn = true
     }
 

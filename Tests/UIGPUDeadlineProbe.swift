@@ -156,9 +156,9 @@ private final class GPULoad {
         let chain=[0,6,5,4,3,2,1,8]
         reordered.edges=zip(chain,chain.dropFirst()).map { FXEdge(from:$0,to:$1,port:"in") }
         let routingPlans=try [document,bypass,reordered].map { try $0.configuration() }
-        ProphetLikeAudioUnit.sharedParameters=params;ProphetLikeAudioUnit.sharedEffects=effects
         let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,
-            componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+            componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+            parameters: params, effects: effects)
         try unit.outputBusses[0].setFormat(format);try unit.allocateRenderResources()
         defer { unit.deallocateRenderResources() }
         unit.noteOn(60,velocity:1)

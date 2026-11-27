@@ -36,10 +36,9 @@ final class EffectsController: ObservableObject {
         var state=settings(kind); edit(&state); execute(.settings(kind.rawValue,state))
     }
     func preview(_ kind: EffectKind,index: Int,value: Float) {
-        var doc=document
-        let i=doc.nodes.firstIndex { $0.kind == kind }!
-        doc.nodes[i].settings.values[index]=min(1,max(0,value))
-        if let config=try? doc.configuration() { shared.set(config) }
+        var config = editor.configuration
+        config.settings[kind.rawValue].values[index] = min(1, max(0, value))
+        shared.set(config)
     }
     func connect(from: Int,to: Int,port: String) { execute(.connect(FXEdge(from:from,to:to,port:port))) }
     func undo() { editor.undo(); error=""; publish() }
@@ -80,7 +79,7 @@ final class EffectsController: ObservableObject {
     }
     private func publish(save: Bool=true) {
         objectWillChange.send()
-        if let config=try? document.configuration() { shared.set(config,document:document) }
+        shared.set(editor.configuration, document: document)
         if save && persistent, let data=try? JSONEncoder().encode(document) { storage.set(data,forKey:"synth.effects.document.v1") }
     }
     private func message(_ error: Error) -> String {

@@ -22,10 +22,10 @@ func checkEnvelope() {
 
 func checkRender() throws {
     let parameters = SharedSynthParameters()
-    ProphetLikeAudioUnit.sharedParameters = parameters
     let unit = try ProphetLikeAudioUnit(componentDescription: AudioComponentDescription(
         componentType: kAudioUnitType_Generator, componentSubType: 0x50723535,
-        componentManufacturer: 0x53796E74, componentFlags: 0, componentFlagsMask: 0))
+        componentManufacturer: 0x53796E74, componentFlags: 0, componentFlagsMask: 0),
+        parameters: parameters, effects: SharedEffects())
     for sr in [44100.0, 48000.0, 96000.0] {
         try unit.outputBusses[0].setFormat(AVAudioFormat(standardFormatWithSampleRate: sr, channels: 2)!)
         try unit.allocateRenderResources()

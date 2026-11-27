@@ -8,10 +8,13 @@ import AudioToolbox
   _ = NSApplication.shared
   let params=SharedSynthParameters()
   params.set { $0.envBRelease=0.001; $0.releaseEnabled=true }
-  ProphetLikeAudioUnit.sharedParameters=params
-  let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+  let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+      parameters: params, effects: SharedEffects())
   try unit.allocateRenderResources()
-  let controls=(0..<28).map { _ in PanelControl(label:"",title:"",value:.constant(0.5),range:0...1) }
+  var values = Array(repeating: 0.5, count: 28)
+  let controls = values.indices.map { index in
+   PanelControl(label: "", title: "", value: Binding(get: { values[index] }, set: { values[index] = $0 }), range: 0...1)
+  }
   let buffer=AVAudioPCMBuffer(pcmFormat:unit.outputBusses[0].format,frameCapacity:256)!
   var flags=AudioUnitRenderActionFlags(),time=AudioTimeStamp()
   time.mFlags = .sampleTimeValid
@@ -52,6 +55,14 @@ import AudioToolbox
   send(.leftMouseDragged,-1,80)
   send(.leftMouseDragged,left+step/2,80)
   send(.leftMouseUp,left+step/2,80)
+  for index in 0..<2 {
+   let center = layout.point(layout.wheel(index))
+   let x = center.x * 740, y = center.y * 96
+   send(.leftMouseDown, x, y)
+   send(.leftMouseDragged, x, y - 15)
+   send(.leftMouseUp, x, y - 15)
+   precondition(abs(values[26 + index] - 0.65) < 0.0001)
+  }
   print("EVENTS",events)
   precondition(events == ["on48","off48","on49","off49","on52","off52","on48","off48"])
   _ = peak(200)

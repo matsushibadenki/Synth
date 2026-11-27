@@ -30,9 +30,9 @@ func runMutedDeviceProbe() throws {
     for i in 1...6 { document.nodes[i].settings.enabled=true }
     document.nodes[EffectKind.studio.rawValue].settings.mode=2
     effects.set(try document.configuration())
-    ProphetLikeAudioUnit.sharedParameters=parameters; ProphetLikeAudioUnit.sharedEffects=effects
     let unit=try ProphetLikeAudioUnit(componentDescription:AudioComponentDescription(componentType:kAudioUnitType_Generator,
-        componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0))
+        componentSubType:0x50723535,componentManufacturer:0x53796E74,componentFlags:0,componentFlagsMask:0),
+        parameters: parameters, effects: effects)
     try unit.outputBusses[0].setFormat(format)
     try unit.allocateRenderResources()
     defer { unit.deallocateRenderResources() }
